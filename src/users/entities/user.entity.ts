@@ -1,6 +1,6 @@
 import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 
-@Entity()
+@Entity('user')
 export class UserEntity {
   @PrimaryGeneratedColumn({
     type: "bigint"
