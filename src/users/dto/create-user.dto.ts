@@ -1,8 +1,8 @@
 import { Type } from "class-transformer"
-import { IsDate, IsEmail, IsString, IsStrongPassword } from "class-validator"
+import { IsDate, IsEmail, Matches, IsStrongPassword } from "class-validator"
 
-export class UserDTO {
-  @IsString()
+export class UserCreateDTO {
+  @Matches( /^[a-zA-ZÀ-ÿ]+(?:[ .'-][a-zA-ZÀ-ÿ]+)*$/, {message: 'Username must be alphanumeric'} )
   name! : string
 
   @IsEmail()
@@ -14,4 +14,4 @@ export class UserDTO {
   @IsDate()
   @Type(() => Date)
   birth_dt? : Date
-}
+} 
