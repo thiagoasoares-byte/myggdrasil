@@ -1,5 +1,5 @@
-require('dotenv').config(); 
 import { DataSource } from "typeorm";
+import { UserEntity } from "./entities/user.entity";
 
 export const AppDataSource = new DataSource({
   type: "mysql", 
@@ -7,5 +7,6 @@ export const AppDataSource = new DataSource({
   port: parseInt(process.env.MYSQLPORT!),
   username: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
-  database: process.env.BDNAME
+  database: process.env.BDNAME,
+  entities: [UserEntity]
 })
