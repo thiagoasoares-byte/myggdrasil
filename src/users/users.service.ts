@@ -20,6 +20,10 @@ export class UsersService {
       await userRepository.save(user)
       return { message: `Usuário ID:[${user.id}] foi criado com sucesso!`}
   }}
+
+  // async getUser(): Promise<{message:any}>{
+
+  // }
 } 
     
 

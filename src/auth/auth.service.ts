@@ -23,7 +23,7 @@ export class AuthService {
       const payload = { sub: userReturn.id, username: userReturn.name, email: userReturn.email }
       return{
         accessToken: `${await this.jwtService.signAsync(payload)}`,
-        message: `Usuário  foi encontrado com sucesso!`}
+        message: `O login foi feito com sucesso.`}
     }else{
       throw new UnauthorizedException('Credenciais inválidas')
     } 
