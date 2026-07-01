@@ -40,9 +40,18 @@
 ⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠁⠀⠀⠀⠀⠈⠡⠀⠀⠀⠀⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀
 ```
 
-myggdrasil
+```text
+ __  __   __  ____   ____   ____   ____   ____   ____   ____
+|  \/  | \ \ / / / ___| / ___|/ ___|/ ___|/ ___|/ ___|/ ___|
+| |\/| |  \ V /  \___ \| |  _ \___ \| |  _ \___ \| |  _ \___ \
+| |  | |   | |     ___) | |_| | ___) | |_| | ___) | |_| |___) |
+|_|  |_|   |_|    |____/ \____| |____/ \____| |____/ \____|____/
 
-> A personal decision museum — register important life choices and see how one decision leads to another.
+  A personal decision museum
+  where choice paths grow into stories.
+```
+
+> Make meaningful decisions, track them, and watch each choice branch into the next.
 
 ## What is Myggdrasil?
 
