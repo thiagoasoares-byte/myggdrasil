@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserLoginDTO } from './dto/login-user.dto';
 import { SkipAuth } from '../decorators/publickey';

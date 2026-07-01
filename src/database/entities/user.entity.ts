@@ -1,4 +1,6 @@
-import { Column, CreateDateColumn, Entity, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { Column, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
+import { EventEntity } from "./event.entity"
+import { UpdatedAndCreatedAtColumn } from "../entityclass/updatedcreatedat.class"
 
 @Entity('user')
 export class UserEntity {
@@ -41,9 +43,9 @@ export class UserEntity {
   })
   birth_dt? : Date
 
-  @CreateDateColumn()
-  created_at! : Date
+  @Column(() => UpdatedAndCreatedAtColumn)
+  updcreat?: UpdatedAndCreatedAtColumn
 
-  @UpdateDateColumn()
-  updated_at! : Date
+  @OneToMany(() => EventEntity, (event) => event.user_id)
+  events?: EventEntity[];
 } 
