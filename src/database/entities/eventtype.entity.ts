@@ -22,9 +22,10 @@ export class EventType{
     })
     is_default!: boolean
 
-  @Column(() => UpdatedAndCreatedAtColumn)
+  @Column(() => UpdatedAndCreatedAtColumn, { prefix: '' })
   updcreat?: UpdatedAndCreatedAtColumn
 
-  @OneToMany(() => EventEntity,(events) => events.event_type)
-  event?: EventType[]
+  @OneToMany(() => EventEntity, (events) => events.event_type)
+  events?: EventEntity[];
 }
+

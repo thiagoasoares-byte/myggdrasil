@@ -13,7 +13,7 @@ export class EventService {
 
   async getAllEvent(userId: number){
     try{
-      const allevents = await AppDataSource.getRepository(EventEntity).createQueryBuilder('event').leftJoinAndSelect('event.user','user').leftJoinAndSelect('event.eventtype','type').where("event.user_id = :id", {user_id : userId}).orderBy('event.when','DESC').getMany()
+      const allevents = await AppDataSource.getRepository(EventEntity).createQueryBuilder('event').leftJoinAndSelect('event.user','user').leftJoinAndSelect('event.event_type','type').where("event.user_id = :id", {user_id : userId}).orderBy('event.when','DESC').getMany()
       
       if(!allevents){
         throw new NotFoundException('O usuário não possuí nenhum evento vinculado')
@@ -21,13 +21,14 @@ export class EventService {
         return allevents
       }
     }catch(error){
-      console.log(error) 
+      console.log(error)
+      throw error
     }
   }
 
   async getEventById(userid: number, id: number){
     try{
-      const eventbyid = await AppDataSource.getRepository(EventEntity).createQueryBuilder('event').leftJoinAndSelect('event.user','user').leftJoinAndSelect('event.eventtype','type').where('event.id = :id', {id : id}).andWhere("event.user_id = :userid", {userid : userid}).orderBy('event.when','DESC').getMany()
+      const eventbyid = await AppDataSource.getRepository(EventEntity).createQueryBuilder('event').leftJoinAndSelect('event.user','user').leftJoinAndSelect('event.eventtype','type').where('event.id = :id', {id : id}).andWhere("event.user_id = :userid", {userid : userid}).orderBy('event.when','DESC').getOne()
       
       if(!eventbyid){
         throw new NotFoundException('O usuário não possuí nenhum evento vinculado a esse ID')
@@ -35,7 +36,8 @@ export class EventService {
         return eventbyid
       }
     }catch(error){
-      console.log(error) 
+      console.log(error)
+      throw error
     }
   }
 
@@ -71,6 +73,7 @@ export class EventService {
       }
     } catch(error){
       console.log(error)
+      throw error
     }
   }
 
@@ -89,7 +92,8 @@ export class EventService {
       await repository.delete(id)
       return{message: 'O evento foi deletado com sucesso'}
     }catch(error){
-    console.log(error)
+      console.log(error)
+      throw error
     }
   } 
   
@@ -101,12 +105,13 @@ export class EventService {
       return { message: `Tipo de evento ID:[${eventtype.id}] foi criado com sucesso!`}
     } catch(error){
       console.log(error)
+      throw error
     }
   }
 
   async putEventType(id: number, dto: EventTypeDTO){
     try{
-      if(!dto || Object.keys(dto).length !== 0){
+      if(!dto || Object.keys(dto).length === 0){
         throw BadRequestException
       }else{
         const repository = await AppDataSource.getRepository(EventType)
@@ -123,6 +128,7 @@ export class EventService {
       }
     }catch(error){
       console.log(error)
+      throw error
     }
   }
 
@@ -138,6 +144,7 @@ export class EventService {
       }
     }catch(error){
       console.log(error)
+      throw error
     }
   }
 }

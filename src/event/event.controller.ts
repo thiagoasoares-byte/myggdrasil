@@ -39,17 +39,17 @@ export class EventController {
     return this.EventService.deleteEvent(userId,id)
   }
 
-  @Post('/event&type/create')
+  @Post('/eventtype/create')
   async newEventType(@Body() dto: EventTypeDTO){
     return this.EventService.newEventType(dto)
   }
 
-  @Put('/event&type/update/:id')
+  @Put('/eventtype/update/:id')
   async putEventType(@Param('id', ParseIntPipe) id: number, @Body() dto: EventTypeUpdateDTO){
     return this.EventService.putEventType(id, dto)
   }
 
-  @Delete('/event&type/delete/:id')
+  @Delete('/eventtype/delete/:id')
   async deleteEventType(@Param('id', ParseIntPipe) id: number){
     return this.EventService.deleteEventType(id)
   }

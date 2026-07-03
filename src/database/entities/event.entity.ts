@@ -21,8 +21,8 @@ export class EventEntity{
   })
   name!: string
   
-  @ManyToOne(() => EventType, (type)=> type.event, {nullable: false})
-  @JoinColumn({name: 'event_type'})
+  @ManyToOne(() => EventType, (type) => type.events, { nullable: false })
+  @JoinColumn({ name: 'event_type' })
   event_type!: EventType
 
   @Column({
@@ -44,6 +44,6 @@ export class EventEntity{
   })
   status!: string
 
-  @Column(() => UpdatedAndCreatedAtColumn)
+  @Column(() => UpdatedAndCreatedAtColumn, { prefix: '' })
     updcreat?: UpdatedAndCreatedAtColumn
 }

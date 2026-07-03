@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException} from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject} from '@nestjs/common';
 import { UserEntity } from '../database/entities/user.entity';
 import { UserCreateDTO } from './dto/create-user.dto';
 import { AppDataSource } from '../database/data-source';
@@ -6,9 +6,14 @@ import { hashMaker } from '../utils/hash';
 import { UserPutDTO } from './dto/put-user.dto';
 import { UserDeleteDTO } from './dto/delete-user.dto';
 import * as bcrypt from 'bcrypt';
+import { ClientKafka } from '@nestjs/microservices';
 
 @Injectable()
 export class UsersService {
+  constructor(
+    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka
+  ) {}
+
   async signupPost(dto : UserCreateDTO ): Promise<{message:any}> {
     const user = new UserEntity()
     user.name = dto.name
@@ -18,9 +23,13 @@ export class UsersService {
 
     const userRepository = AppDataSource.getRepository(UserEntity)
     if(await userRepository.findOne({where : { email: dto.email }})){
-      throw new ConflictException(`O e-mail ${dto.email} já está sendo utilizado.`)
+      throw new ConflictException(`Não foi possível fazer o signup`)
     }else{
       await userRepository.save(user)
+      await this.kafkaClient.emit('user.signup',{
+        email: dto.email,
+        name: dto.name
+      })
       return { message: `Usuário ID:[${user.id}] foi criado com sucesso!`}
   }}
 

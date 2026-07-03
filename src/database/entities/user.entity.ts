@@ -43,7 +43,7 @@ export class UserEntity {
   })
   birth_dt? : Date
 
-  @Column(() => UpdatedAndCreatedAtColumn)
+  @Column(() => UpdatedAndCreatedAtColumn, { prefix: '' })
   updcreat?: UpdatedAndCreatedAtColumn
 
   @OneToMany(() => EventEntity, (event) => event.user_id)
