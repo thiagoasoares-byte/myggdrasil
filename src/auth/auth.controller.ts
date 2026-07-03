@@ -1,9 +1,9 @@
-import { Body, Controller, Get, HttpCode, Post, Request, UseGuards } from '@nestjs/common';
+import { Body, Controller, HttpCode, Post } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { UserLoginDTO } from './dto/login-user.dto';
 import { SkipAuth } from '../decorators/publickey';
 
-@Controller('user')
+@Controller('auth')
 export class AuthController {
   constructor(private AuthService: AuthService){}
   
@@ -12,10 +12,5 @@ export class AuthController {
   @HttpCode(200)
   async loginGet(@Body() dto: UserLoginDTO){
     return this.AuthService.loginGet(dto)
-  }
-
-  @Get('/profile')
-  getprofile(@Request() req){
-    return req.user
   }
 }
