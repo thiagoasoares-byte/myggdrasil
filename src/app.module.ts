@@ -11,6 +11,7 @@ import { KafkaController } from './kafka/kafka.controller';
 import { UserEntity } from './database/entities/user.entity';
 import { EventEntity } from './database/entities/event.entity';
 import { EventType } from './database/entities/eventtype.entity';
+import { EmailTokenEntity } from './database/entities/email_token.entity';
 
 @Module({
   imports: [
@@ -21,7 +22,7 @@ import { EventType } from './database/entities/eventtype.entity';
       username: process.env.MYSQLUSER,
       password: process.env.MYSQLPASSWORD,
       database: process.env.BDNAME,
-      entities: [UserEntity, EventEntity, EventType],
+      entities: [UserEntity, EventEntity, EventType, EmailTokenEntity],
       synchronize: false,
       autoLoadEntities: true,
     }),
