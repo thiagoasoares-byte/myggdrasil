@@ -1,6 +1,5 @@
 import { Controller, Logger, OnModuleInit } from '@nestjs/common';
 import { Ctx, KafkaContext, MessagePattern, Payload } from '@nestjs/microservices';
-import e from 'express';
 import { Resend } from 'resend';
 
 @Controller()
