@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject} from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject, ParseUUIDPipe} from '@nestjs/common';
 import { UserEntity } from '../database/entities/user.entity';
 import { UserCreateDTO } from './dto/create-user.dto';
 import { AppDataSource } from '../database/data-source';
@@ -7,6 +7,10 @@ import { UserPutDTO } from './dto/put-user.dto';
 import { UserDeleteDTO } from './dto/delete-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ClientKafka } from '@nestjs/microservices';
+import { EmailTokenEntity } from '../database/entities/email_token.entity';
+import { UUID } from 'typeorm/driver/mongodb/bson.typings.js';
+import { randomUUID } from 'crypto';
+import { error } from 'console';
 
 @Injectable()
 export class UsersService {
@@ -25,13 +29,23 @@ export class UsersService {
     if(await userRepository.findOne({where : { email: dto.email }})){
       throw new ConflictException(`Não foi possível fazer o signup`)
     }else{
+      const token = randomUUID()
       await userRepository.save(user)
+
+      const emailtoken = new EmailTokenEntity()
+      emailtoken.user_id = user
+      emailtoken.token = await hashMaker(token)
+      emailtoken.expires_at = new Date(Date.now() + 86400000)
+      await AppDataSource.getRepository(EmailTokenEntity).save(emailtoken)
+
       await this.kafkaClient.emit('user.signup',{
         email: dto.email,
-        name: dto.name
+        name: dto.name,
+        token: token
       })
-      return { message: `Usuário ID:[${user.id}] foi criado com sucesso!`}
-  }}
+      return { message: `Usuário foi criado com sucesso!`}
+    }
+  }
 
   async putUser(request : UserPutDTO, userId : number): Promise<{message:any}>{
     if(!request || Object.keys(request).length === 0){
