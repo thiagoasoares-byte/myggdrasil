@@ -1,6 +1,7 @@
 import { Column, Entity, OneToMany, PrimaryGeneratedColumn, UpdateDateColumn } from "typeorm"
 import { EventEntity } from "./event.entity"
 import { UpdatedAndCreatedAtColumn } from "../entityclass/updatedcreatedat.class"
+import { EmailTokenEntity } from "./email_token.entity"
 
 @Entity('user')
 export class UserEntity {
@@ -48,4 +49,7 @@ export class UserEntity {
 
   @OneToMany(() => EventEntity, (event) => event.user_id)
   events?: EventEntity[];
+
+  @OneToMany(() => EmailTokenEntity, (emailtoken) => emailtoken.user_id)
+  emailtoken?: EmailTokenEntity[];
 } 
