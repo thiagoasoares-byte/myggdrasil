@@ -6,40 +6,42 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-%2343853D)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-9.x-%23E0234E)](https://nestjs.com/)
+[![Kafka](https://img.shields.io/badge/Kafka-Event--driven-%23231F20)](https://kafka.apache.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-%233178C6)](https://www.typescriptlang.org/)
+[![React](https://img.shields.io/badge/React-18.x-%2361DAFB)](https://react.dev/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-%23007AB9)](https://www.mysql.com/)
 [![License](https://img.shields.io/badge/License-MIT-%23000000)](LICENSE)
 
 **Decisions as a clean, secure backend graph.**
 
-A developer-focused backend for tracking meaningful decisions, categorizing them, and modeling relationships between events.
+A full-stack app for tracking meaningful decisions, categorizing them, and modeling relationships between events, with a simple React frontend consuming the backend API.
 
 ---
 
 ## What it does
 
-- Secure user signup and login
+- Secure user signup and login, with cookie-based session (HttpOnly)
 - JWT-based authentication with **RS256**
 - Event creation, reading, updating, deleting
 - Event types for structured categorization
-- Graph-ready event relationships
+- Parent/child relationships between events, preventing self-referencing and duplicate links
 - Ownership-aware access control
+- Event-driven welcome/confirmation email: a Kafka consumer listens for the user-signup event and triggers a transactional email (Nodemailer, with Mailgun as provider and SMTP/Ethereal/MailHog as dev fallbacks)
+- React frontend for signup, login, and managing events end to end
 
 ---
 
 ## Why it matters
 
-Myggdrasil is designed to capture how choices connect over time. Each event can be linked, categorized, and owned, enabling a personal decision graph rather than a flat list.
+Myggdrasil is designed to capture how choices connect over time. Each event can be linked to others, categorized, and owned, enabling a personal decision graph rather than a flat list.
 
 ---
 
 ## Tech stack
 
-- Node.js
-- NestJS
-- TypeScript
-- TypeORM
-- MySQL
+**Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL, Kafka (event-driven mail trigger)
+**Mail:** Nodemailer, with Mailgun as provider (SMTP/Ethereal/MailHog as dev fallbacks)
+**Frontend:** React, Vite
 
 ---
 
@@ -65,9 +67,13 @@ src/
   database/
     entities/
   event/
+  event-relationship/
+  mail/
   utils/
   app.module.ts
   main.ts
+frontend/
+  src/
 ```
 
 ---
@@ -98,46 +104,15 @@ openssl rsa -in private.key -pubout -out public.key
 
 ## Run
 
+**Backend**
+
 ```bash
 npm install
 npm run start:dev
 npm run build
 ```
 
----
-
-## API summary
-
-| Method | Route | Purpose | Auth |
-|---|---|---|---|
-| POST | `/users/signup` | Register user | Public |
-| POST | `/auth/login` | Request JWT | Public |
-| GET | `/auth/me` | Get current user (reads HttpOnly cookie) | Public (reads cookie) |
-| POST | `/auth/logout` | Clear auth cookie | Public |
-| GET | `/event` | List user events | Protected |
-| POST | `/event/create` | Create event | Protected |
-| PUT | `/event/update` | Update event | Protected |
-| DELETE | `/event/delete` | Delete event | Protected |
-```
-
----
-
-## Cookie-based authentication
-
-- Login (`POST /auth/login`) now sets an HttpOnly cookie named `mg_token` containing the JWT.
-- Client requests should include credentials (cookies). The frontend `api` client is configured with `withCredentials: true`.
-- Use `GET /auth/me` to fetch the current user from the server (reads the cookie).
-- Use `POST /auth/logout` to clear the cookie.
-
-For production, ensure `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
-
----
-
-## Frontend (Vite)
-
-- Frontend is in the `frontend/` folder (Vite + React).
-- It uses cookie-based auth and calls `/auth/me` to populate the user on app load.
-- Start the frontend dev server from the project root:
+**Frontend**
 
 ```bash
 cd frontend
@@ -147,6 +122,47 @@ npm run dev
 
 Open http://localhost:5173. The frontend proxies `/api` to the backend (`http://localhost:3000`).
 
+---
+
+## API summary
+
+| Method | Route | Purpose | Auth |
+|---|---|---|---|
+| POST | `/users/signup` | Register user | Public |
+| POST | `/auth/login` | Request JWT (sets HttpOnly cookie) | Public |
+| GET | `/auth/me` | Get current user (reads HttpOnly cookie) | Public (reads cookie) |
+| POST | `/auth/logout` | Clear auth cookie | Public |
+| GET | `/event` | List user events | Protected |
+| POST | `/event/create` | Create event | Protected |
+| PUT | `/event/update` | Update event | Protected |
+| DELETE | `/event/delete` | Delete event | Protected |
+| POST | `/event/relationship` | Link two events as parent/child | Protected |
+| GET | `/event/:id/relationships` | List relationships for an event | Protected |
+| DELETE | `/event/relationship/:id` | Remove a relationship | Protected |
+
+---
+
+## Frontend
+
+The `frontend/` folder holds a React + Vite single-page app that consumes the backend API directly:
+
+- Signup and login forms, using cookie-based session (`withCredentials: true`)
+- Loads the current user via `GET /auth/me` on app start
+- Lists, creates, updates, and deletes events through the `/event` endpoints
+- Lets the user link events together as parent/child relationships via `/event/relationship`
+
+---
+
+## Cookie-based authentication
+
+- Login (`POST /auth/login`) sets an HttpOnly cookie named `mg_token` containing the JWT.
+- Client requests include credentials (cookies); the frontend `api` client is configured with `withCredentials: true`.
+- Use `GET /auth/me` to fetch the current user from the server (reads the cookie).
+- Use `POST /auth/logout` to clear the cookie.
+
+For production, ensure `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
+
+---
 
 ## Security highlights
 
@@ -154,6 +170,7 @@ Open http://localhost:5173. The frontend proxies `/api` to the backend (`http://
 - JWT signed with **RS256**
 - Protected routes guarded by JWT auth
 - Input validation via **class-validator**
+- Relationship creation blocks self-referencing events (`parentId === childId`) and duplicate direct links
 
 ---
 
@@ -161,15 +178,15 @@ Open http://localhost:5173. The frontend proxies `/api` to the backend (`http://
 
 - [x] Auth and signup/login
 - [x] JWT guard
-- [ ] Event CRUD
-- [ ] Event type management
-- [ ] Ownership validation
-- [ ] Event relation graph logic
-- [ ] React frontend
+- [x] Event CRUD
+- [x] Event relationship linking (parent/child)
+- [x] React frontend (basic)
+- [ ] Event type management UI
+- [ ] Full cycle detection across multi-hop relationships (currently only self-reference and duplicate direct links are blocked)
 - [ ] Deployment
 
 ---
 
-## LinkedIn-ready highlight
+## Notes on the relationship graph
 
-Clean, minimal, backend-first architecture with an elegant white logo presentation. Designed to stand out as a polished project snippet on professional profiles.
+The `event-relationship` module currently blocks two specific cases: an event linking to itself, and an exact duplicate parent-child pair. It does **not** yet perform a graph traversal to catch indirect cycles (for example, A → B → C → A). Full cycle detection is on the roadmap.
