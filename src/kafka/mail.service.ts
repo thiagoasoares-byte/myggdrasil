@@ -20,18 +20,15 @@ export class MailService {
   private readonly provider: 'smtp' | 'mailgun' = (process.env.MAIL_PROVIDER as 'smtp' | 'mailgun') ?? 'smtp';
 
   constructor() {
-    // initialize mailgun client when requested
     this.mailgunDomain = this.provider === 'mailgun' ? process.env.MAILGUN_DOMAIN ?? null : null;
     this.mailgunClient = this.provider === 'mailgun' ? this.createMailgunClient() : null;
 
-    // decide transporter: prefer dev transports, then SMTP config
     const devMode = process.env.MAIL_DEV ?? '';
     if (devMode === 'ethereal') {
       this.transporter = this.createEtherealTransporter();
     } else if (devMode === 'mailhog') {
       this.transporter = this.createMailhogTransporter();
     } else {
-      // if provider is smtp use smtp transporter; if provider is mailgun, still create SMTP transporter as fallback
       this.transporter = this.createTransporter(this.defaultTransportFactory);
     }
 
@@ -69,14 +66,12 @@ export class MailService {
           return;
         } catch (err) {
           this.logger.error(`Falha ao enviar via Mailgun, tentando fallback SMTP: ${err}`);
-          // fallthrough to SMTP fallback
         }
       } else {
         this.logger.warn(`Mailgun não configurado. Tentando fallback SMTP para ${options.to}.`);
       }
     }
 
-    // at this point, try SMTP transporter if available
     if (!this.transporter) {
       this.logger.warn(`E-mail não enviado para ${options.to} porque o transporte SMTP não está configurado.`);
       return;
@@ -89,16 +84,12 @@ export class MailService {
         subject: options.subject,
         html: options.html,
       });
-      // if using Ethereal, log preview url
-      // @ts-ignore
       if ((info as any)?.messageId && (info as any)?.envelope && process.env.MAIL_DEV === 'ethereal') {
-        // nodemailer.getTestMessageUrl works when using ethereal test account
         try {
-          // eslint-disable-next-line @typescript-eslint/no-var-requires
           const nodemailerPkg = require('nodemailer');
           const url = nodemailerPkg.getTestMessageUrl(info);
           if (url) this.logger.log(`E-mail Ethereal preview: ${url}`);
-        } catch (e) {/* ignore */}
+        } catch (e) {}
       }
       return;
     } catch (err) {
@@ -158,7 +149,6 @@ export class MailService {
   }
 
   private createMailhogTransporter(): Transporter | null {
-    // MailHog default SMTP listens on localhost:1025 without auth
     try {
       return nodemailer.createTransport({ host: process.env.MAILHOG_HOST ?? 'localhost', port: Number(process.env.MAILHOG_PORT ?? 1025), secure: false });
     } catch (e) {
@@ -169,13 +159,7 @@ export class MailService {
 
   private createEtherealTransporter(): Transporter | null {
     try {
-      // createTestAccount is async but nodemailer supports callback/promise
-      // We'll create a synchronous wrapper using createTestAccount then createTransport
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
       const nodemailerPkg = require('nodemailer');
-      // createTestAccount returns a promise when callback omitted
-      // eslint-disable-next-line @typescript-eslint/no-var-requires
-      // @ts-ignore
       return (async () => {
         const testAccount = await nodemailerPkg.createTestAccount();
         return nodemailerPkg.createTransport({
