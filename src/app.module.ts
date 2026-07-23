@@ -8,10 +8,12 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { EventModule } from './event/event.module';
 import { KafkaController } from './kafka/kafka.controller';
+import { MailService } from './kafka/mail.service';
 import { UserEntity } from './database/entities/user.entity';
 import { EventEntity } from './database/entities/event.entity';
 import { EventType } from './database/entities/eventtype.entity';
 import { EmailTokenEntity } from './database/entities/email_token.entity';
+import { EventRelationshipEntity } from './database/entities/eventrelationship.entity';
 
 @Module({
   imports: [
@@ -22,7 +24,7 @@ import { EmailTokenEntity } from './database/entities/email_token.entity';
       username: process.env.MYSQLUSER,
       password: process.env.MYSQLPASSWORD,
       database: process.env.BDNAME,
-      entities: [UserEntity, EventEntity, EventType, EmailTokenEntity],
+      entities: [UserEntity, EventEntity, EventType, EmailTokenEntity, EventRelationshipEntity],
       synchronize: false,
       autoLoadEntities: true,
     }),
@@ -31,7 +33,7 @@ import { EmailTokenEntity } from './database/entities/email_token.entity';
     EventModule,
   ],
   controllers: [AppController, KafkaController],
-  providers: [AppService, {
+  providers: [AppService, MailService, {
     provide: APP_GUARD,
     useClass: AuthGuard
   }],

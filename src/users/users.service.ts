@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject, ParseUUIDPipe} from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject } from '@nestjs/common';
 import { UserEntity } from '../database/entities/user.entity';
 import { UserCreateDTO } from './dto/create-user.dto';
 import { AppDataSource } from '../database/data-source';
@@ -8,9 +8,7 @@ import { UserDeleteDTO } from './dto/delete-user.dto';
 import * as bcrypt from 'bcrypt';
 import { ClientKafka } from '@nestjs/microservices';
 import { EmailTokenEntity } from '../database/entities/email_token.entity';
-import { UUID } from 'typeorm/driver/mongodb/bson.typings.js';
 import { randomUUID } from 'crypto';
-import { error } from 'console';
 
 @Injectable()
 export class UsersService {
@@ -60,6 +58,37 @@ export class UsersService {
       )
     }
     return{ message: 'O usuário foi atualizado com sucesso'}
+  }
+
+  async verifyEmail(token: string): Promise<{ message: string }> {
+    const tokenRepository = AppDataSource.getRepository(EmailTokenEntity);
+    const userRepository = AppDataSource.getRepository(UserEntity);
+
+    const tokenRecord = await tokenRepository.findOne({
+      where: { token },
+      relations: ['user_id'],
+    });
+
+    if (!tokenRecord) {
+      throw new NotFoundException('Token de verificação não encontrado.');
+    }
+
+    if (tokenRecord.used_at) {
+      throw new BadRequestException('Token já foi utilizado.');
+    }
+
+    if (tokenRecord.expires_at < new Date()) {
+      throw new BadRequestException('Token expirado.');
+    }
+
+    const user = tokenRecord.user_id;
+    user.email_verified = true;
+    await userRepository.save(user);
+
+    tokenRecord.used_at = new Date();
+    await tokenRepository.save(tokenRecord);
+
+    return { message: 'E-mail verificado com sucesso.' };
   }
 
   async deleteUser(senhaUser: UserDeleteDTO,userId: number): Promise<{message:any}>{

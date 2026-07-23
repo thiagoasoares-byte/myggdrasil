@@ -28,4 +28,17 @@ export class AuthService {
       throw new UnauthorizedException('Credenciais inválidas')
     } 
   }
+
+  async getProfile(payload: any){
+    try{
+      const user = await AppDataSource.getRepository(UserEntity).findOneBy({ id: payload.sub })
+      if(!user) return null
+      // remove sensitive fields
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars
+      const { password, ...rest } = user as any
+      return rest
+    }catch(e){
+      return null
+    }
+  }
 }
