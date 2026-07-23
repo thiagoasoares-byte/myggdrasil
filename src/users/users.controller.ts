@@ -34,4 +34,11 @@ export class UsersController {
     const userId = req.user.sub
     return this.UsersService.deleteUser(dto, userId)
   }
+
+  @SkipAuth()
+  @Post('/verify-email')
+  @HttpCode(200)
+  async verifyEmail(@Body('token') token: string) {
+    return this.UsersService.verifyEmail(token);
+  }
 }

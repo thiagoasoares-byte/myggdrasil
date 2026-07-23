@@ -1,7 +1,8 @@
-import { Column, Entity, JoinColumn, ManyToOne, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, JoinColumn, ManyToOne, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { UserEntity } from "./user.entity";
 import { UpdatedAndCreatedAtColumn } from "../entityclass/updatedcreatedat.class";
 import { EventType } from "./eventtype.entity";
+import { EventRelationshipEntity } from "./eventrelationship.entity";
 
 @Entity('event')
 export class EventEntity{
@@ -44,6 +45,12 @@ export class EventEntity{
   })
   status!: string
 
+  @OneToMany(() => EventRelationshipEntity, (relation) => relation.parent)
+  childRelationships?: EventRelationshipEntity[];
+
+  @OneToMany(() => EventRelationshipEntity, (relation) => relation.child)
+  parentRelationships?: EventRelationshipEntity[];
+
   @Column(() => UpdatedAndCreatedAtColumn, { prefix: '' })
-    updcreat?: UpdatedAndCreatedAtColumn
+  updcreat?: UpdatedAndCreatedAtColumn
 }

@@ -112,6 +112,8 @@ npm run build
 |---|---|---|---|
 | POST | `/users/signup` | Register user | Public |
 | POST | `/auth/login` | Request JWT | Public |
+| GET | `/auth/me` | Get current user (reads HttpOnly cookie) | Public (reads cookie) |
+| POST | `/auth/logout` | Clear auth cookie | Public |
 | GET | `/event` | List user events | Protected |
 | POST | `/event/create` | Create event | Protected |
 | PUT | `/event/update` | Update event | Protected |
@@ -119,6 +121,32 @@ npm run build
 ```
 
 ---
+
+## Cookie-based authentication
+
+- Login (`POST /auth/login`) now sets an HttpOnly cookie named `mg_token` containing the JWT.
+- Client requests should include credentials (cookies). The frontend `api` client is configured with `withCredentials: true`.
+- Use `GET /auth/me` to fetch the current user from the server (reads the cookie).
+- Use `POST /auth/logout` to clear the cookie.
+
+For production, ensure `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
+
+---
+
+## Frontend (Vite)
+
+- Frontend is in the `frontend/` folder (Vite + React).
+- It uses cookie-based auth and calls `/auth/me` to populate the user on app load.
+- Start the frontend dev server from the project root:
+
+```bash
+cd frontend
+npm install --legacy-peer-deps
+npm run dev
+```
+
+Open http://localhost:5173. The frontend proxies `/api` to the backend (`http://localhost:3000`).
+
 
 ## Security highlights
 

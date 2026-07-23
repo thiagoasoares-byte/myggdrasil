@@ -2,7 +2,6 @@ import { Module } from '@nestjs/common';
 import { UsersController } from './users.controller';
 import { UsersService } from './users.service';
 import { ClientsModule, Transport } from '@nestjs/microservices';
-import { KafkaController } from '../kafka/kafka.controller';
 import { Partitioners } from 'kafkajs';
 
 const kafkaBroker: string[] = process.env.KAFKA_BROKER
@@ -25,7 +24,7 @@ const kafkaBroker: string[] = process.env.KAFKA_BROKER
       },
     },
   ])],
-  controllers: [UsersController, KafkaController],
+  controllers: [UsersController],
   providers: [UsersService],
 })
 export class UsersModule {}

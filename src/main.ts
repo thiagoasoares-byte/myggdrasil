@@ -3,6 +3,7 @@ import "reflect-metadata";
 import { NestFactory } from '@nestjs/core';
 import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common'
+const cookieParser = require('cookie-parser')
 import { AppDataSource } from "./database/data-source";
 import { Transport } from "@nestjs/microservices";
 import { Partitioners } from 'kafkajs';
@@ -24,6 +25,7 @@ async function bootstrap() {
   })
 
   app.useGlobalPipes(new ValidationPipe())
+  app.use(cookieParser())
   await app.startAllMicroservices()
   await app.listen(process.env.PORT ?? 3000);
   try {
