@@ -22,11 +22,12 @@ export default function Login(){
 
   return (
     <div>
+      <header className="logo">Myggdrasil</header>
       <h2>Login</h2>
       <form onSubmit={submit}>
         <input placeholder="Email" value={email} onChange={e=>setEmail(e.target.value)} required />
         <input placeholder="Password" type="password" value={password} onChange={e=>setPassword(e.target.value)} required />
-        <button type="submit" disabled={loading}>{loading ? 'Loading...' : 'Login'}</button>
+        <button className="btn-primary" type="submit" disabled={loading}>{loading ? 'Loading...' : 'Login'}</button>
       </form>
       {message && <div className="card">{message}</div>}
     </div>

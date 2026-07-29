@@ -24,7 +24,7 @@ async function bootstrap() {
     },
   })
 
-  app.useGlobalPipes(new ValidationPipe())
+  app.useGlobalPipes(new ValidationPipe({ transform: true }))
   app.use(cookieParser())
   await app.startAllMicroservices()
   await app.listen(process.env.PORT ?? 3000);

@@ -1,0 +1,21 @@
+{
+  "timestamp": "2026-07-29T01:24:10Z",
+  "source": "playwright-automated",
+  "requestPayload": {
+    "name": "Playwright Success",
+    "email": "success_1785288245665@example.com",
+    "password": "Pa$$w0rd!",
+    "birth_dt": "1990-01-01"
+  },
+  "response": {
+    "status": 201,
+    "message": "Created",
+    "token": "8deb847c-43ca-4d53-b421-3de494fb2b92"
+  },
+  "backendLogsExcerpt": [
+    "KafkaController payload: { email: 'success_1785288245665@example.com', name: 'Playwright Success', token: '8deb847c-43ca-4d53-b421-3de494fb2b92' }",
+    "MailService: Falha ao enviar via Mailgun, tentando fallback SMTP: Error: Forbidden",
+    "MailService: Falha no transporte SMTP ao enviar e-mail: Error: Invalid login"
+  ],
+  "notes": "Signup created user and email token; email sending failed due to credentials. Migration duplicate-column error occurred earlier on app startup but this ran after."
+}

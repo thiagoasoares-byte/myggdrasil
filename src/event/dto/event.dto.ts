@@ -1,4 +1,5 @@
 import { IsDate, IsNumber, IsString } from "class-validator";
+import { Type } from 'class-transformer'
 import { EventType } from "../../database/entities/eventtype.entity";
 
 export class EventDTO{
@@ -9,6 +10,7 @@ export class EventDTO{
   event_type!: EventType
 
   @IsDate()
+  @Type(() => Date)
   when!: Date
 
   @IsString()
