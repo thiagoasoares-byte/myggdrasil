@@ -36,6 +36,18 @@ export class EventRelationshipService {
     return await this.relationshipRepository.save(rel);
   }
 
+  async getAllRelationsForUser(userId: number) {
+    const relations = await this.relationshipRepository
+      .createQueryBuilder('r')
+      .leftJoinAndSelect('r.parent', 'parent')
+      .leftJoinAndSelect('r.child', 'child')
+      .leftJoin('parent.user_id', 'parentUser')
+      .where('parentUser.id = :userId', { userId })
+      .getMany();
+
+    return relations;
+  }
+
   async getRelationsForEvent(eventId: number) {
     const relations = await this.relationshipRepository.createQueryBuilder('r')
       .leftJoinAndSelect('r.parent', 'parent')

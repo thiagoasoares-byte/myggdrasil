@@ -1,6 +1,7 @@
-import { Column, Entity, OneToMany, PrimaryGeneratedColumn } from "typeorm";
+import { Column, Entity, ManyToOne, JoinColumn, OneToMany, PrimaryGeneratedColumn } from "typeorm";
 import { UpdatedAndCreatedAtColumn } from "../entityclass/updatedcreatedat.class";
 import { EventEntity } from "./event.entity";
+import { UserEntity } from "./user.entity";
 
 @Entity('eventtype')
 export class EventType{
@@ -21,6 +22,11 @@ export class EventType{
       default: false
     })
     is_default!: boolean
+
+  // Dono do tipo de decisão customizado. NULL = tipo padrão, visível para todos.
+  @ManyToOne(() => UserEntity, { nullable: true, onDelete: 'CASCADE' })
+  @JoinColumn({ name: 'user_id' })
+  user_id?: UserEntity | null
 
   @Column(() => UpdatedAndCreatedAtColumn, { prefix: '' })
   updcreat?: UpdatedAndCreatedAtColumn

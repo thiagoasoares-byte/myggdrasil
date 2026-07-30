@@ -102,11 +102,41 @@ export async function getRelationships(eventId: number): Promise<EventRelationsh
   return data
 }
 
+export async function getAllRelationships(): Promise<EventRelationship[]> {
+  const { data } = await api.get<EventRelationship[]>('/event-relationships')
+  return data
+}
+
 export async function deleteRelationship(id: number): Promise<void> {
   await api.delete(`/event-relationships/${id}`)
 }
 
-// Event type IDs (hardcoded until GET /event-types exists)
+export type DecisionAnalysis = {
+  resumo: string
+  decisoes_mais_proveitosas: { nome: string; motivo: string }[]
+  decisoes_boas_consequencias: { nome: string; motivo: string }[]
+  recomendacoes: string[]
+  categorias_atencao: { categoria: string; motivo: string }[]
+}
+
+export async function getAiAnalysis(): Promise<DecisionAnalysis> {
+  const { data } = await api.get<DecisionAnalysis>('/events/analysis')
+  return data
+}
+
+export async function getEventTypes(): Promise<EventType[]> {
+  const { data } = await api.get<EventType[]>('/event-types')
+  return data
+}
+
+export async function createEventType(name: string): Promise<{ id: number }> {
+  const { data } = await api.post<ApiMessage>('/event-types', { name })
+  const match = data.message.match(/\[(\d+)\]/)
+  return { id: match ? Number(match[1]) : 0 }
+}
+
+// Fallback estático, usado apenas enquanto GET /event-types não responde
+// (ex: primeira renderização, antes do fetch terminar).
 export const EVENT_TYPE_IDS = [
   { id: 1, name: 'Decisão' },
   { id: 2, name: 'Estudo' },

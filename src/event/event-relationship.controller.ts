@@ -1,4 +1,4 @@
-import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post } from '@nestjs/common';
+import { Body, Controller, Delete, Get, Param, ParseIntPipe, Post, Request } from '@nestjs/common';
 import { EventRelationshipService } from './event-relationship.service';
 
 @Controller()
@@ -9,6 +9,12 @@ export class EventRelationshipController {
   async create(@Body() body: { parentId: number; childId: number; relationship?: string }) {
     const { parentId, childId, relationship } = body;
     return this.relService.createRelation(parentId, childId, relationship);
+  }
+
+  @Get('event-relationships')
+  async listAll(@Request() req) {
+    const userId = req.user.sub;
+    return this.relService.getAllRelationsForUser(userId);
   }
 
   @Get('events/:id/relationships')

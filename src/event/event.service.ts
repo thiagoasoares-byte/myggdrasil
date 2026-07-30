@@ -116,10 +116,29 @@ export class EventService {
     }
   }
 
-  async newEventType(dto: EventTypeDTO) {
+  async getEventTypes(userId: number) {
+    try {
+      const types = await AppDataSource.getRepository(EventType)
+        .createQueryBuilder('type')
+        .leftJoin('type.user_id', 'owner')
+        .where('type.is_default = true')
+        .orWhere('owner.id = :userId', { userId })
+        .orderBy('type.is_default', 'DESC')
+        .addOrderBy('type.name', 'ASC')
+        .getMany();
+      return types;
+    } catch (error) {
+      console.log(error);
+      throw error;
+    }
+  }
+
+  async newEventType(userId: number, dto: EventTypeDTO) {
     try {
       const eventtype = new EventType();
       eventtype.name = dto.name;
+      eventtype.is_default = false;
+      eventtype.user_id = { id: userId } as UserEntity;
       await AppDataSource.getRepository(EventType).save(eventtype);
       return {
         message: `Tipo de evento ID:[${eventtype.id}] foi criado com sucesso!`,
@@ -130,21 +149,23 @@ export class EventService {
     }
   }
 
-  async putEventType(id: number, dto: EventTypeDTO) {
+  async putEventType(userId: number, id: number, dto: EventTypeDTO) {
     try {
       if (!dto || Object.keys(dto).length === 0) {
         throw BadRequestException;
       } else {
         const repository = AppDataSource.getRepository(EventType);
-        const event = await repository.findOne({ where: { id: id } });
+        const event = await repository.findOne({ where: { id: id }, relations: ['user_id'] });
         if (!event) {
           throw new NotFoundException('Tipo de evento não encontrado.');
-        } else {
-          await repository.update({ id: id }, { name: dto.name });
-          return {
-            message: `Tipo de evento ID:[${id}] foi atualizado com sucesso!`,
-          };
         }
+        if (event.is_default || !event.user_id || event.user_id.id !== userId) {
+          throw new BadRequestException('Você só pode editar categorias criadas por você.');
+        }
+        await repository.update({ id: id }, { name: dto.name });
+        return {
+          message: `Tipo de evento ID:[${id}] foi atualizado com sucesso!`,
+        };
       }
     } catch (error) {
       console.log(error);
@@ -152,16 +173,18 @@ export class EventService {
     }
   }
 
-  async deleteEventType(id: number) {
+  async deleteEventType(userId: number, id: number) {
     try {
       const repository = AppDataSource.getRepository(EventType);
-      const event = await repository.findOne({ where: { id: id } });
+      const event = await repository.findOne({ where: { id: id }, relations: ['user_id'] });
       if (!event) {
         throw new NotFoundException('O tipo de evento não foi encontrado.');
-      } else {
-        await repository.delete(id);
-        return { message: 'O tipo de evento foi deletado com sucesso' };
       }
+      if (event.is_default || !event.user_id || event.user_id.id !== userId) {
+        throw new BadRequestException('Você só pode remover categorias criadas por você.');
+      }
+      await repository.delete(id);
+      return { message: 'O tipo de evento foi deletado com sucesso' };
     } catch (error) {
       console.log(error);
       throw error;

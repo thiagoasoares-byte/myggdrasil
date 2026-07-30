@@ -14,9 +14,10 @@ import { Badge } from "@/components/ui/badge"
 import { Separator } from "@/components/ui/separator"
 import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/contexts/AuthContext"
-import { getEvents, getRelationships, createEvent, updateEvent, deleteEvent, createRelationship, deleteRelationship, EVENT_TYPE_IDS, EVENT_STATUS_OPTIONS, type Event, type EventRelationship, type CreateEventInput } from "@/api"
+import { getEvents, getRelationships, getAllRelationships, getEventTypes, createEventType, getAiAnalysis, createEvent, updateEvent, deleteEvent, createRelationship, deleteRelationship, EVENT_TYPE_IDS, EVENT_STATUS_OPTIONS, type Event, type EventType, type EventRelationship, type DecisionAnalysis, type CreateEventInput } from "@/api"
 import { useLocation } from "wouter"
 import { useEffect, useState, useMemo } from "react"
+import { useDebounce } from "@/hooks/useDebounce"
 import { toast } from "sonner"
 import {
   Loader2,
@@ -31,6 +32,9 @@ import {
   X,
   ArrowDown,
   ArrowRight,
+  Search,
+  BarChart3,
+  Sparkles,
 } from "lucide-react"
 import { useTheme } from "@/contexts/ThemeContext"
 import {
@@ -85,9 +89,9 @@ function RelationArrow({ fromAbove }: { fromAbove: boolean }) {
 }
 
 // ---- Helpers ----
-function getEventTypeName(type: any): string {
+function getEventTypeName(type: any, types: readonly { id: number; name: string }[] = EVENT_TYPE_IDS): string {
   if (typeof type === "number") {
-    const found = EVENT_TYPE_IDS.find((t) => t.id === type)
+    const found = types.find((t) => t.id === type)
     return found?.name || "Evento"
   }
   return type?.name || "Evento"
@@ -114,6 +118,7 @@ export default function Home() {
   const [, setLocation] = useLocation()
 
   const [events, setEvents] = useState<Event[]>([])
+  const [eventTypes, setEventTypes] = useState<EventType[]>(EVENT_TYPE_IDS.map((t) => ({ ...t, is_default: true })))
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [selectedEventId, setSelectedEventId] = useState<number | null>(null)
@@ -124,6 +129,24 @@ export default function Home() {
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null)
   const [linkDialogOpen, setLinkDialogOpen] = useState(false)
   const [linkChildId, setLinkChildId] = useState("none")
+
+  // Busca com debounce
+  const [searchQuery, setSearchQuery] = useState("")
+  const debouncedSearch = useDebounce(searchQuery, 250)
+
+  // Estatísticas do hub
+  const [allRelationships, setAllRelationships] = useState<EventRelationship[]>([])
+  const [statsOpen, setStatsOpen] = useState(false)
+
+  // Drag-and-drop para relacionar decisões
+  const [draggedEventId, setDraggedEventId] = useState<number | null>(null)
+  const [dragOverEventId, setDragOverEventId] = useState<number | null>(null)
+
+  // IA analyzer
+  const [aiDialogOpen, setAiDialogOpen] = useState(false)
+  const [aiLoading, setAiLoading] = useState(false)
+  const [aiError, setAiError] = useState<string | null>(null)
+  const [aiResult, setAiResult] = useState<DecisionAnalysis | null>(null)
 
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) || null,
@@ -153,8 +176,28 @@ export default function Home() {
     }
   }
 
+  const fetchAllRelationships = async () => {
+    try {
+      const data = await getAllRelationships()
+      setAllRelationships(data)
+    } catch {
+      setAllRelationships([])
+    }
+  }
+
+  const fetchEventTypes = async () => {
+    try {
+      const data = await getEventTypes()
+      if (data.length) setEventTypes(data)
+    } catch {
+      // mantém o fallback estático em caso de erro
+    }
+  }
+
   useEffect(() => {
     fetchEvents()
+    fetchAllRelationships()
+    fetchEventTypes()
   }, [])
 
   useEffect(() => {
@@ -241,6 +284,7 @@ export default function Home() {
       fetchRelationships(selectedEventId)
       // Also refetch all events to update relationship indicators on timeline
       await fetchEvents()
+      await fetchAllRelationships()
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Erro ao criar relação"
       toast.error(typeof msg === "string" ? msg : msg[0])
@@ -253,21 +297,101 @@ export default function Home() {
       toast.success("Relação removida")
       fetchRelationships(selectedEventId!)
       await fetchEvents()
+      await fetchAllRelationships()
     } catch {
       toast.error("Erro ao remover relação")
     }
   }
 
+  const handleAnalyze = async () => {
+    setAiDialogOpen(true)
+    setAiLoading(true)
+    setAiError(null)
+    try {
+      const result = await getAiAnalysis()
+      setAiResult(result)
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Erro ao gerar análise. Tente novamente em instantes."
+      setAiError(typeof msg === "string" ? msg : msg[0])
+    } finally {
+      setAiLoading(false)
+    }
+  }
+
+  // ---- Drag-and-drop: soltar um card sobre outro cria a relação direto ----
+  const handleDragStart = (id: number) => {
+    setDraggedEventId(id)
+  }
+
+  const handleDragEnd = () => {
+    setDraggedEventId(null)
+    setDragOverEventId(null)
+  }
+
+  const handleDragOverCard = (e: React.DragEvent, id: number) => {
+    e.preventDefault()
+    if (draggedEventId !== null && draggedEventId !== id) {
+      setDragOverEventId(id)
+    }
+  }
+
+  const handleDropOnCard = async (e: React.DragEvent, targetId: number) => {
+    e.preventDefault()
+    const sourceId = draggedEventId
+    setDraggedEventId(null)
+    setDragOverEventId(null)
+    if (sourceId === null || sourceId === targetId) return
+
+    try {
+      // O card arrastado (source) vira antecessor do card alvo (target)
+      await createRelationship(sourceId, targetId, "levou a")
+      toast.success("Decisões relacionadas")
+      await fetchEvents()
+      await fetchAllRelationships()
+      if (selectedEventId === sourceId || selectedEventId === targetId) {
+        fetchRelationships(selectedEventId!)
+      }
+    } catch (err: any) {
+      const msg = err?.response?.data?.message || "Erro ao relacionar decisões"
+      toast.error(typeof msg === "string" ? msg : msg[0])
+    }
+  }
+
+  // Eventos filtrados pela busca (nome) com debounce
+  const filteredEvents = useMemo(() => {
+    const q = debouncedSearch.trim().toLowerCase()
+    if (!q) return events
+    return events.filter((ev) => ev.name.toLowerCase().includes(q))
+  }, [events, debouncedSearch])
+
   // Group events by year
   const groupedEvents = useMemo(() => {
     const groups: Record<string, Event[]> = {}
-    for (const ev of events) {
+    for (const ev of filteredEvents) {
       const year = ev.when ? ev.when.substring(0, 4) : "Sem data"
       if (!groups[year]) groups[year] = []
       groups[year].push(ev)
     }
     return Object.entries(groups).sort((a, b) => Number(b[0]) - Number(a[0]))
-  }, [events])
+  }, [filteredEvents])
+
+  // Estatísticas do hub: total de decisões, ramificações e categorias mais usadas
+  const hubStats = useMemo(() => {
+    const categoryCounts = new Map<string, number>()
+    for (const ev of events) {
+      const name = getEventTypeName(ev.event_type, eventTypes)
+      categoryCounts.set(name, (categoryCounts.get(name) || 0) + 1)
+    }
+    const topCategories = Array.from(categoryCounts.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 3)
+
+    return {
+      total: events.length,
+      branches: allRelationships.length,
+      topCategories,
+    }
+  }, [events, allRelationships, eventTypes])
 
   // Build a map of which events have children (for timeline indicators)
   const eventsWithChildren = useMemo(() => {
@@ -315,6 +439,24 @@ export default function Home() {
                 {events.length} {events.length === 1 ? "decisão" : "decisões"}
               </span>
             )}
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={handleAnalyze}
+              title="Análise por IA"
+            >
+              <Sparkles className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${statsOpen ? "text-primary bg-primary/10" : ""}`}
+              onClick={() => setStatsOpen((v) => !v)}
+              title="Estatísticas"
+            >
+              <BarChart3 className="h-4 w-4" />
+            </Button>
             <Button variant="ghost" size="icon" className="h-8 w-8" onClick={toggleTheme}>
               {theme === "dark" ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
             </Button>
@@ -388,9 +530,78 @@ export default function Home() {
               <h2 className="font-serif text-3xl lg:text-4xl font-bold text-foreground mb-2 leading-tight">
                 Sua árvore de decisões
               </h2>
-              <p className="text-muted-foreground text-sm mb-10 max-w-md leading-relaxed">
-                A linha do tempo completa das suas decisões. Toque em qualquer nó para ver os detalhes e ligar consequências a ele.
+              <p className="text-muted-foreground text-sm mb-6 max-w-md leading-relaxed">
+                A linha do tempo completa das suas decisões. Toque em qualquer nó para ver os detalhes, ou arraste um card sobre outro para ligá-los direto.
               </p>
+
+              {/* Stats panel */}
+              <AnimatePresence>
+                {statsOpen && (
+                  <motion.div
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: "auto" }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.2 }}
+                    className="overflow-hidden mb-6"
+                  >
+                    <div className="grid grid-cols-3 gap-3 p-4 rounded-lg border border-border/50 bg-card/40">
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Decisões
+                        </p>
+                        <p className="font-serif text-2xl font-bold text-foreground">{hubStats.total}</p>
+                      </div>
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1">
+                          Ramificações
+                        </p>
+                        <p className="font-serif text-2xl font-bold text-foreground">{hubStats.branches}</p>
+                      </div>
+                      <div>
+                        <p className="font-mono text-[10px] uppercase tracking-wider text-muted-foreground mb-1.5">
+                          Categorias em destaque
+                        </p>
+                        <div className="flex flex-col gap-1">
+                          {hubStats.topCategories.length === 0 ? (
+                            <span className="text-xs text-muted-foreground/60">—</span>
+                          ) : (
+                            hubStats.topCategories.map(([name, count]) => (
+                              <span key={name} className="text-xs text-foreground">
+                                {name} <span className="text-muted-foreground font-mono">({count})</span>
+                              </span>
+                            ))
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* Search input with debounce */}
+              <div className="relative mb-8 max-w-sm">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  placeholder="Buscar decisão por nome..."
+                  className="h-9 pl-9 text-sm"
+                />
+                {searchQuery && (
+                  <button
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                  >
+                    <X className="h-3.5 w-3.5" />
+                  </button>
+                )}
+              </div>
+
+              {debouncedSearch && groupedEvents.length === 0 && (
+                <p className="text-sm text-muted-foreground italic mb-6">
+                  Nenhuma decisão encontrada para "{debouncedSearch}".
+                </p>
+              )}
 
               {/* Year groups */}
               {groupedEvents.map(([year, yearEvents]) => (
@@ -453,11 +664,19 @@ export default function Home() {
                           {/* Card */}
                           <button
                             onClick={() => handleSelectEvent(ev.id)}
-                            className={`event-card w-full text-left p-4 rounded-lg border transition-all duration-150 relative ${
-                              isSelected
+                            draggable
+                            onDragStart={() => handleDragStart(ev.id)}
+                            onDragEnd={handleDragEnd}
+                            onDragOver={(e) => handleDragOverCard(e, ev.id)}
+                            onDragLeave={() => setDragOverEventId((cur) => (cur === ev.id ? null : cur))}
+                            onDrop={(e) => handleDropOnCard(e, ev.id)}
+                            className={`event-card w-full text-left p-4 rounded-lg border transition-all duration-150 relative cursor-grab active:cursor-grabbing ${
+                              dragOverEventId === ev.id
+                                ? "border-primary bg-primary/[0.08] ring-2 ring-primary/30"
+                                : isSelected
                                 ? "border-primary/30 bg-primary/[0.04] shadow-sm"
                                 : "border-border/60 bg-card/50 hover:border-primary/20 hover:bg-card"
-                            }`}
+                            } ${draggedEventId === ev.id ? "opacity-40" : ""}`}
                           >
                             <div className="flex items-center gap-2.5 mb-1.5">
                               {ev.when && (
@@ -471,7 +690,7 @@ export default function Home() {
                                   isSelected ? "bg-primary/15 text-primary border-primary/20" : ""
                                 }`}
                               >
-                                {getEventTypeName(ev.event_type)}
+                                {getEventTypeName(ev.event_type, eventTypes)}
                               </Badge>
                               {ev.status && ev.status !== "ativo" && (
                                 <span className="font-mono text-[10px] text-muted-foreground/60 ml-auto">
@@ -542,7 +761,7 @@ export default function Home() {
                   </h3>
                   <div className="flex items-center gap-2.5 mb-4">
                     <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5">
-                      {getEventTypeName(selectedEvent.event_type)}
+                      {getEventTypeName(selectedEvent.event_type, eventTypes)}
                     </Badge>
                     {selectedEvent.when && (
                       <span className="font-mono text-[11px] text-muted-foreground">
@@ -659,6 +878,12 @@ export default function Home() {
         onOpenChange={setDialogOpen}
         editEventId={editEventId}
         events={events}
+        eventTypes={eventTypes}
+        onCreateType={async (name: string) => {
+          const result = await createEventType(name)
+          await fetchEventTypes()
+          return result.id
+        }}
         onCreate={handleCreateEvent}
         onUpdate={handleUpdateEvent}
         selectedEventId={selectedEventId}
@@ -762,6 +987,103 @@ export default function Home() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* ─── IA Analyzer Dialog ─── */}
+      <Dialog open={aiDialogOpen} onOpenChange={setAiDialogOpen}>
+        <DialogContent className="sm:max-w-xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="font-serif text-lg flex items-center gap-2">
+              <Sparkles className="h-4 w-4 text-primary" />
+              Análise da sua trajetória
+            </DialogTitle>
+            <p className="text-sm text-muted-foreground">
+              Gerado por IA a partir das suas decisões e relações registradas.
+            </p>
+          </DialogHeader>
+
+          {aiLoading ? (
+            <div className="flex flex-col items-center justify-center py-10 gap-3">
+              <Loader2 className="h-6 w-6 animate-spin text-primary" />
+              <p className="text-sm text-muted-foreground">Analisando sua árvore de decisões...</p>
+            </div>
+          ) : aiError ? (
+            <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
+              <p className="text-sm text-destructive">{aiError}</p>
+              <Button variant="outline" size="sm" onClick={handleAnalyze}>Tentar novamente</Button>
+            </div>
+          ) : aiResult ? (
+            <div className="space-y-5 mt-1">
+              {aiResult.resumo && (
+                <p className="text-sm text-foreground/85 leading-relaxed">{aiResult.resumo}</p>
+              )}
+
+              {aiResult.decisoes_mais_proveitosas.length > 0 && (
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-primary/80 mb-2">
+                    Decisões mais proveitosas
+                  </p>
+                  <div className="space-y-2">
+                    {aiResult.decisoes_mais_proveitosas.map((d, i) => (
+                      <div key={i} className="p-3 rounded-lg border border-border/40 bg-card/50">
+                        <p className="font-medium text-sm text-foreground">{d.nome}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{d.motivo}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiResult.decisoes_boas_consequencias.length > 0 && (
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-primary/80 mb-2">
+                    Decisões com boas consequências
+                  </p>
+                  <div className="space-y-2">
+                    {aiResult.decisoes_boas_consequencias.map((d, i) => (
+                      <div key={i} className="p-3 rounded-lg border border-border/40 bg-card/50">
+                        <p className="font-medium text-sm text-foreground">{d.nome}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{d.motivo}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
+              {aiResult.recomendacoes.length > 0 && (
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-primary/80 mb-2">
+                    Próximos passos sugeridos
+                  </p>
+                  <ul className="space-y-1.5">
+                    {aiResult.recomendacoes.map((r, i) => (
+                      <li key={i} className="text-sm text-foreground/80 flex gap-2">
+                        <span className="text-primary/60">→</span>
+                        <span>{r}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
+              {aiResult.categorias_atencao.length > 0 && (
+                <div>
+                  <p className="font-mono text-[11px] uppercase tracking-wider text-primary/80 mb-2">
+                    Categorias que merecem atenção
+                  </p>
+                  <div className="space-y-2">
+                    {aiResult.categorias_atencao.map((c, i) => (
+                      <div key={i} className="p-3 rounded-lg border border-border/40 bg-card/50">
+                        <p className="font-medium text-sm text-foreground">{c.categoria}</p>
+                        <p className="text-xs text-muted-foreground mt-1 leading-relaxed">{c.motivo}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : null}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
@@ -793,6 +1115,8 @@ function EventDialog({
   onOpenChange,
   editEventId,
   events,
+  eventTypes,
+  onCreateType,
   onCreate,
   onUpdate,
   selectedEventId,
@@ -801,6 +1125,8 @@ function EventDialog({
   onOpenChange: (open: boolean) => void
   editEventId: number | null
   events: Event[]
+  eventTypes: EventType[]
+  onCreateType: (name: string) => Promise<number>
   onCreate: (data: Record<string, any>) => Promise<any>
   onUpdate: (id: number, data: Record<string, any>) => void
   selectedEventId: number | null
@@ -812,6 +1138,9 @@ function EventDialog({
   const [status, setStatus] = useState("ativo")
   const [parentId, setParentId] = useState<string>("")
   const [loading, setLoading] = useState(false)
+  const [newCategoryMode, setNewCategoryMode] = useState(false)
+  const [newCategoryName, setNewCategoryName] = useState("")
+  const [creatingCategory, setCreatingCategory] = useState(false)
 
   const editEvent = useMemo(
     () => (editEventId ? events.find((e) => e.id === editEventId) : null),
@@ -819,6 +1148,8 @@ function EventDialog({
   )
 
   useEffect(() => {
+    setNewCategoryMode(false)
+    setNewCategoryName("")
     if (editEvent) {
       setName(editEvent.name)
       setEventType(String(getEventTypeId(editEvent.event_type)))
@@ -907,18 +1238,74 @@ function EventDialog({
               <Label htmlFor="event-type" className="font-mono text-[11px] uppercase tracking-wider">
                 Categoria
               </Label>
-              <Select value={eventType} onValueChange={setEventType}>
+              <Select
+                value={eventType}
+                onValueChange={(v) => {
+                  if (v === "__new__") {
+                    setNewCategoryMode(true)
+                    return
+                  }
+                  setEventType(v)
+                }}
+              >
                 <SelectTrigger id="event-type" className="h-10">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  {EVENT_TYPE_IDS.map((t) => (
+                  {eventTypes.map((t) => (
                     <SelectItem key={t.id} value={String(t.id)}>
-                      {t.name}
+                      {t.name}{!t.is_default ? " ✦" : ""}
                     </SelectItem>
                   ))}
+                  <SelectItem value="__new__" className="text-primary">
+                    + Nova categoria...
+                  </SelectItem>
                 </SelectContent>
               </Select>
+
+              {newCategoryMode && (
+                <div className="flex items-center gap-1.5 pt-1">
+                  <Input
+                    autoFocus
+                    value={newCategoryName}
+                    onChange={(e) => setNewCategoryName(e.target.value)}
+                    placeholder="Nome da nova categoria"
+                    className="h-8 text-sm"
+                  />
+                  <Button
+                    type="button"
+                    size="sm"
+                    className="h-8 px-2.5 text-xs"
+                    disabled={!newCategoryName.trim() || creatingCategory}
+                    onClick={async () => {
+                      setCreatingCategory(true)
+                      try {
+                        const newId = await onCreateType(newCategoryName.trim())
+                        setEventType(String(newId))
+                        setNewCategoryMode(false)
+                        setNewCategoryName("")
+                        toast.success("Categoria criada")
+                      } catch (err: any) {
+                        const msg = err?.response?.data?.message || "Erro ao criar categoria"
+                        toast.error(typeof msg === "string" ? msg : msg[0])
+                      } finally {
+                        setCreatingCategory(false)
+                      }
+                    }}
+                  >
+                    {creatingCategory ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    className="h-8 px-2 text-xs"
+                    onClick={() => { setNewCategoryMode(false); setNewCategoryName("") }}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
 
