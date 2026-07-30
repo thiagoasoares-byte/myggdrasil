@@ -52,16 +52,6 @@ The product is already functional end to end:
 - Kafka-driven welcome/confirmation email flow through a consumer that reacts to signup events
 - React frontend for signup, login, profile management, and decision graph navigation
 
-## Product Direction
-
-The interface follows the product brief in [PRODUCT_DOSSIER.md](PRODUCT_DOSSIER.md):
-
-- Calm, reflective, and editorial rather than corporate or task-oriented
-- A tree or timeline mental model instead of a generic data table
-- Strong visual hierarchy for title, context, category, and status
-- Clear empty states that encourage the first meaningful decision
-- Accessible interactions on desktop and mobile
-
 ## Tech Stack
 
 - **Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL, Kafka
