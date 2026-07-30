@@ -7,6 +7,7 @@ import { AuthModule } from './auth/auth.module';
 import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { EventModule } from './event/event.module';
+import { AnalysisModule } from './analysis/analysis.module';
 import { KafkaController } from './kafka/kafka.controller';
 import { MailService } from './kafka/mail.service';
 import { UserEntity } from './database/entities/user.entity';
@@ -31,6 +32,7 @@ import { EventRelationshipEntity } from './database/entities/eventrelationship.e
     UsersModule,
     AuthModule,
     EventModule,
+    AnalysisModule,
   ],
   controllers: [AppController, KafkaController],
   providers: [AppService, MailService, {

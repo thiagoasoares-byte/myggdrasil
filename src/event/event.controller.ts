@@ -38,18 +38,27 @@ export class EventController {
     return this.EventService.deleteEvent(userId,id)
   }
 
+  @Get('event-types')
+  async getEventTypes(@Request() req){
+    const userId = req.user.sub
+    return this.EventService.getEventTypes(userId)
+  }
+
   @Post('event-types')
-  async newEventType(@Body() dto: EventTypeDTO){
-    return this.EventService.newEventType(dto)
+  async newEventType(@Request() req, @Body() dto: EventTypeDTO){
+    const userId = req.user.sub
+    return this.EventService.newEventType(userId, dto)
   }
 
   @Put('event-types/:id')
-  async putEventType(@Param('id', ParseIntPipe) id: number, @Body() dto: EventTypeUpdateDTO){
-    return this.EventService.putEventType(id, dto)
+  async putEventType(@Param('id', ParseIntPipe) id: number, @Request() req, @Body() dto: EventTypeUpdateDTO){
+    const userId = req.user.sub
+    return this.EventService.putEventType(userId, id, dto)
   }
 
   @Delete('event-types/:id')
-  async deleteEventType(@Param('id', ParseIntPipe) id: number){
-    return this.EventService.deleteEventType(id)
+  async deleteEventType(@Param('id', ParseIntPipe) id: number, @Request() req){
+    const userId = req.user.sub
+    return this.EventService.deleteEventType(userId, id)
   }
 }
