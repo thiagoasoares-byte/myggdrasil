@@ -1,7 +1,8 @@
 # compiled output
-/dist
-/node_modules
-/build
+**/dist/
+**/build/
+**/node_modules/
+**/coverage/
 
 # Logs
 logs
@@ -45,6 +46,18 @@ lerna-debug.log*
 # temp directory
 .temp
 .tmp
+tmp/
+temp/
+
+# frontend/generated artifacts
+frontend/client/public/__manus__/version.json
+frontend/.vite/
+frontend/.turbo/
+frontend/.parcel-cache/
+
+# workspace scratch folders
+backup/
+captures/
 
 # Runtime data
 pids

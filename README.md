@@ -12,53 +12,74 @@
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-%23007AB9)](https://www.mysql.com/)
 [![License](https://img.shields.io/badge/License-MIT-%23000000)](LICENSE)
 
-**Decisions as a clean, secure backend graph.**
+**Myggdrasil is a full-stack decision journal that turns choices into a navigable tree of context, consequences, and reflection.**
 
-A full-stack app for tracking meaningful decisions, categorizing them, and modeling relationships between events, with a simple React frontend consuming the backend API.
+It pairs a NestJS backend with a React + Vite frontend, cookie-based authentication, and a product direction designed to feel calm, editorial, and recruiter-ready.
 
----
+## Product Snapshot
 
-## What it does
+Myggdrasil helps people record meaningful decisions, connect them as parent/child relationships, and revisit the path that led them forward.
 
-- Secure user signup and login, with cookie-based session (HttpOnly)
-- JWT-based authentication with **RS256**
-- Event creation, reading, updating, deleting
-- Event types for structured categorization
-- Parent/child relationships between events, preventing self-referencing and duplicate links
+It is not a task manager, calendar, or social feed. It is a personal decision map built for reflection, clarity, and long-term context.
+
+## Why It Matters
+
+Most tools tell you what happened. Myggdrasil is built to help answer:
+
+- What led to this decision?
+- What did it lead to next?
+- Which themes repeat across my path?
+- Which choices were useful, and which deserve a second look?
+
+The result is a more structured way to learn from life decisions over time.
+
+## Current Status
+
+The product is already functional end to end:
+
+- Frontend and backend are connected and working together.
+- Users can sign up, log in, manage their profile, and sign out.
+- Decisions can be created, updated, deleted, and linked as parent/child relationships.
+- The UI already follows a modern dark editorial direction with protected routes, motion, toasts, and a side-panel detail workflow.
+
+## What It Does
+
+- Secure user signup and login with HttpOnly cookie sessions
+- JWT authentication with **RS256**
+- Decision CRUD with structured categorization
+- Parent/child relationships between decisions, with protection against self-links and duplicate links
 - Ownership-aware access control
-- Event-driven welcome/confirmation email: a Kafka consumer listens for the user-signup event and triggers a transactional email (Nodemailer, with Mailgun as provider and SMTP/Ethereal/MailHog as dev fallbacks)
-- React frontend for signup, login, and managing events end to end
+- Kafka-driven welcome/confirmation email flow through a consumer that reacts to signup events
+- React frontend for signup, login, profile management, and decision graph navigation
 
----
+## Product Direction
 
-## Why it matters
+The interface follows the product brief in [PRODUCT_DOSSIER.md](PRODUCT_DOSSIER.md):
 
-Myggdrasil is designed to capture how choices connect over time. Each event can be linked to others, categorized, and owned, enabling a personal decision graph rather than a flat list.
+- Calm, reflective, and editorial rather than corporate or task-oriented
+- A tree or timeline mental model instead of a generic data table
+- Strong visual hierarchy for title, context, category, and status
+- Clear empty states that encourage the first meaningful decision
+- Accessible interactions on desktop and mobile
 
----
+## Tech Stack
 
-## Tech stack
+- **Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL, Kafka
+- **Mail:** Nodemailer with Mailgun, plus SMTP/Ethereal/MailHog fallbacks for development
+- **Frontend:** React, Vite, wouter, Framer Motion, utility-first styling, shadcn/ui-based components
 
-**Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL, Kafka (event-driven mail trigger)
-**Mail:** Nodemailer, with Mailgun as provider (SMTP/Ethereal/MailHog as dev fallbacks)
-**Frontend:** React, Vite
+## System Model
 
----
-
-## System model
-
-```
+```text
 user               — account credentials and profile
 event              — recorded decisions / actions
-event_type         — categories for events
-event_relationship — parent-child links between events
+event_type         — decision categories
+event_relationship — parent-child links between decisions
 ```
 
-This setup supports multiple parents and children per event, making the dataset flexible and graph-compatible.
+This model supports a flexible decision tree, where each choice can branch into multiple outcomes and multiple predecessors.
 
----
-
-## Structure overview
+## Repo Structure
 
 ```text
 src/
@@ -68,15 +89,14 @@ src/
     entities/
   event/
   event-relationship/
-  mail/
+  kafka/
   utils/
   app.module.ts
   main.ts
 frontend/
-  src/
+  client/
+    src/
 ```
-
----
 
 ## Setup
 
@@ -100,9 +120,7 @@ openssl genrsa -out private.key 2048
 openssl rsa -in private.key -pubout -out public.key
 ```
 
----
-
-## Run
+## Run Locally
 
 **Backend**
 
@@ -120,73 +138,75 @@ npm install --legacy-peer-deps
 npm run dev
 ```
 
-Open http://localhost:5173. The frontend proxies `/api` to the backend (`http://localhost:3000`).
+Open http://localhost:5173. In development, the frontend proxies `/api` to the backend at `http://localhost:3000`.
 
----
-
-## API summary
+## API Summary
 
 | Method | Route | Purpose | Auth |
 |---|---|---|---|
-| POST | `/users/signup` | Register user | Public |
-| POST | `/auth/login` | Request JWT (sets HttpOnly cookie) | Public |
-| GET | `/auth/me` | Get current user (reads HttpOnly cookie) | Public (reads cookie) |
-| POST | `/auth/logout` | Clear auth cookie | Public |
-| GET | `/event` | List user events | Protected |
-| POST | `/event/create` | Create event | Protected |
-| PUT | `/event/update` | Update event | Protected |
-| DELETE | `/event/delete` | Delete event | Protected |
-| POST | `/event/relationship` | Link two events as parent/child | Protected |
-| GET | `/event/:id/relationships` | List relationships for an event | Protected |
-| DELETE | `/event/relationship/:id` | Remove a relationship | Protected |
+| POST | `/user/signup` | Register a new user | Public |
+| POST | `/auth/login` | Request a JWT and set the auth cookie | Public |
+| GET | `/auth/me` | Get the current user from the cookie session | Protected |
+| POST | `/auth/logout` | Clear the auth cookie | Public |
+| GET | `/events` | List the signed-in user's decisions | Protected |
+| POST | `/events` | Create a new decision | Protected |
+| PUT | `/events/:id` | Update a decision | Protected |
+| DELETE | `/events/:id` | Delete a decision | Protected |
+| POST | `/event-relationships` | Link two decisions as parent and child | Protected |
+| GET | `/events/:id/relationships` | List relationships for a decision | Protected |
+| DELETE | `/event-relationships/:id` | Remove a relationship | Protected |
 
----
+## Frontend Experience
 
-## Frontend
+The `frontend/` app is a React + Vite experience that consumes the backend API directly and is already wired for the main product flow:
 
-The `frontend/` folder holds a React + Vite single-page app that consumes the backend API directly:
+- Signup and login with cookie-based sessions (`withCredentials: true`)
+- Auth bootstrap via `GET /auth/me` on app load
+- Decision list, detail, create, edit, delete, and relationship management
+- Modern dark editorial UI with motion, toasts, protected routes, and responsive panels
+- Development proxy support plus an environment-driven API URL for production
 
-- Signup and login forms, using cookie-based session (`withCredentials: true`)
-- Loads the current user via `GET /auth/me` on app start
-- Lists, creates, updates, and deletes events through the `/event` endpoints
-- Lets the user link events together as parent/child relationships via `/event/relationship`
+## Authentication Model
 
----
+- Login sets an HttpOnly cookie named `mg_token` containing the JWT.
+- The frontend includes cookies on API requests through the shared HTTP client.
+- `GET /auth/me` restores the session from the cookie.
+- `POST /auth/logout` clears the session.
 
-## Cookie-based authentication
+For production, keep `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
 
-- Login (`POST /auth/login`) sets an HttpOnly cookie named `mg_token` containing the JWT.
-- Client requests include credentials (cookies); the frontend `api` client is configured with `withCredentials: true`.
-- Use `GET /auth/me` to fetch the current user from the server (reads the cookie).
-- Use `POST /auth/logout` to clear the cookie.
-
-For production, ensure `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
-
----
-
-## Security highlights
+## Security Highlights
 
 - Passwords hashed with **bcrypt**
 - JWT signed with **RS256**
-- Protected routes guarded by JWT auth
+- Protected routes guarded by authentication middleware
 - Input validation via **class-validator**
-- Relationship creation blocks self-referencing events (`parentId === childId`) and duplicate direct links
-
----
+- Relationship creation blocks self-referencing decisions and duplicate direct links
 
 ## Roadmap
 
 - [x] Auth and signup/login
 - [x] JWT guard
-- [x] Event CRUD
-- [x] Event relationship linking (parent/child)
-- [x] React frontend (basic)
-- [ ] Event type management UI
-- [ ] Full cycle detection across multi-hop relationships (currently only self-reference and duplicate direct links are blocked)
+- [x] Decision CRUD
+- [x] Parent/child decision linking
+- [x] React frontend connected to the API
+- [x] Modern UI refresh aligned with the product brief
+- [ ] Search with debounce to filter decisions by name in real time
+- [ ] Drag-and-drop linking between cards without opening a dialog
+- [ ] Hub statistics with counters, most-used categories, and AI insights
+- [ ] AI analyzer to surface the most beneficial decisions and categories that need more attention
 - [ ] Deployment
 
----
+## Planned Product Updates
 
-## Notes on the relationship graph
+The next product steps are focused on making the decision tree faster to explore and more useful as a reflection tool:
 
-The `event-relationship` module currently blocks two specific cases: an event linking to itself, and an exact duplicate parent-child pair. It does **not** yet perform a graph traversal to catch indirect cycles (for example, A → B → C → A). Full cycle detection is on the roadmap.
+1. Search with debounce to keep filtering smooth while users type.
+2. Drag-and-drop relationship creation to reduce friction when branching from one decision to another.
+3. A small hub dashboard with counts, category trends, and an AI layer that analyzes outcomes, useful decisions, and areas that deserve more attention.
+
+The AI analyzer should eventually highlight which decisions were most beneficial, which ones produced better outcomes, which choices should probably have been different, and which categories need more focus.
+
+## Relationship Notes
+
+The `event-relationship` module currently blocks two specific cases: an event linking to itself, and an exact duplicate parent-child pair. It does not yet traverse the full graph to detect indirect cycles such as A → B → C → A. Full cycle detection remains on the roadmap.
