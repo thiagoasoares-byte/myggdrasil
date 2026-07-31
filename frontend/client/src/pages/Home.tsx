@@ -97,6 +97,137 @@ function getEventTypeName(type: any, types: readonly { id: number; name: string 
   return type?.name || "Evento"
 }
 
+type EventTypeLike = {
+  id: number
+  name: string
+  is_default?: boolean
+}
+
+type DecisionAccent = {
+  dot: string
+  card: string
+  cardSelected: string
+  badge: string
+  panel: string
+  panelBadge: string
+}
+
+const DECISION_ACCENTS: DecisionAccent[] = [
+  {
+    dot: "bg-sky-500 border-sky-500 shadow-[0_0_0_3px_rgba(14,165,233,0.14)]",
+    card: "border-sky-500/20 bg-sky-500/[0.04] hover:border-sky-500/30 hover:bg-sky-500/[0.06]",
+    cardSelected: "border-sky-500/35 bg-sky-500/[0.08] shadow-sm",
+    badge: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+    panel: "border-sky-500/20 bg-sky-500/[0.03]",
+    panelBadge: "border-sky-500/20 bg-sky-500/10 text-sky-700 dark:text-sky-300",
+  },
+  {
+    dot: "bg-amber-500 border-amber-500 shadow-[0_0_0_3px_rgba(245,158,11,0.14)]",
+    card: "border-amber-500/20 bg-amber-500/[0.04] hover:border-amber-500/30 hover:bg-amber-500/[0.06]",
+    cardSelected: "border-amber-500/35 bg-amber-500/[0.08] shadow-sm",
+    badge: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+    panel: "border-amber-500/20 bg-amber-500/[0.03]",
+    panelBadge: "border-amber-500/20 bg-amber-500/10 text-amber-700 dark:text-amber-300",
+  },
+  {
+    dot: "bg-cyan-500 border-cyan-500 shadow-[0_0_0_3px_rgba(6,182,212,0.14)]",
+    card: "border-cyan-500/20 bg-cyan-500/[0.04] hover:border-cyan-500/30 hover:bg-cyan-500/[0.06]",
+    cardSelected: "border-cyan-500/35 bg-cyan-500/[0.08] shadow-sm",
+    badge: "border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+    panel: "border-cyan-500/20 bg-cyan-500/[0.03]",
+    panelBadge: "border-cyan-500/20 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300",
+  },
+  {
+    dot: "bg-violet-500 border-violet-500 shadow-[0_0_0_3px_rgba(139,92,246,0.14)]",
+    card: "border-violet-500/20 bg-violet-500/[0.04] hover:border-violet-500/30 hover:bg-violet-500/[0.06]",
+    cardSelected: "border-violet-500/35 bg-violet-500/[0.08] shadow-sm",
+    badge: "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+    panel: "border-violet-500/20 bg-violet-500/[0.03]",
+    panelBadge: "border-violet-500/20 bg-violet-500/10 text-violet-700 dark:text-violet-300",
+  },
+  {
+    dot: "bg-orange-500 border-orange-500 shadow-[0_0_0_3px_rgba(249,115,22,0.14)]",
+    card: "border-orange-500/20 bg-orange-500/[0.04] hover:border-orange-500/30 hover:bg-orange-500/[0.06]",
+    cardSelected: "border-orange-500/35 bg-orange-500/[0.08] shadow-sm",
+    badge: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+    panel: "border-orange-500/20 bg-orange-500/[0.03]",
+    panelBadge: "border-orange-500/20 bg-orange-500/10 text-orange-700 dark:text-orange-300",
+  },
+  {
+    dot: "bg-fuchsia-500 border-fuchsia-500 shadow-[0_0_0_3px_rgba(217,70,239,0.14)]",
+    card: "border-fuchsia-500/20 bg-fuchsia-500/[0.04] hover:border-fuchsia-500/30 hover:bg-fuchsia-500/[0.06]",
+    cardSelected: "border-fuchsia-500/35 bg-fuchsia-500/[0.08] shadow-sm",
+    badge: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+    panel: "border-fuchsia-500/20 bg-fuchsia-500/[0.03]",
+    panelBadge: "border-fuchsia-500/20 bg-fuchsia-500/10 text-fuchsia-700 dark:text-fuchsia-300",
+  },
+]
+
+const FINANCEIRO_ACCENT: DecisionAccent = {
+  dot: "bg-emerald-500 border-emerald-500 shadow-[0_0_0_3px_rgba(16,185,129,0.14)]",
+  card: "border-emerald-500/25 bg-emerald-500/[0.05] hover:border-emerald-500/35 hover:bg-emerald-500/[0.08]",
+  cardSelected: "border-emerald-500/40 bg-emerald-500/[0.1] shadow-sm",
+  badge: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+  panel: "border-emerald-500/20 bg-emerald-500/[0.04]",
+  panelBadge: "border-emerald-500/20 bg-emerald-500/10 text-emerald-700 dark:text-emerald-300",
+}
+
+const PESSOAL_ACCENT: DecisionAccent = {
+  dot: "bg-rose-500 border-rose-500 shadow-[0_0_0_3px_rgba(244,63,94,0.14)]",
+  card: "border-rose-500/25 bg-rose-500/[0.05] hover:border-rose-500/35 hover:bg-rose-500/[0.08]",
+  cardSelected: "border-rose-500/40 bg-rose-500/[0.1] shadow-sm",
+  badge: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+  panel: "border-rose-500/20 bg-rose-500/[0.04]",
+  panelBadge: "border-rose-500/20 bg-rose-500/10 text-rose-700 dark:text-rose-300",
+}
+
+function hashString(value: string): number {
+  let hash = 0
+  for (let index = 0; index < value.length; index += 1) {
+    hash = (hash << 5) - hash + value.charCodeAt(index)
+    hash |= 0
+  }
+  return Math.abs(hash)
+}
+
+function getDecisionAccent(type: any, types: readonly EventTypeLike[] = EVENT_TYPE_IDS): DecisionAccent {
+  const meta = typeof type === "number"
+    ? types.find((candidate) => candidate.id === type) || { id: type, name: "Evento" }
+    : { id: type?.id || 1, name: type?.name || "Evento", is_default: type?.is_default }
+
+  const normalizedName = meta.name.toLowerCase()
+  if (normalizedName === "financeiro") return FINANCEIRO_ACCENT
+  if (normalizedName === "pessoal") return PESSOAL_ACCENT
+
+  const paletteIndex = hashString(`${meta.id}:${meta.name}`) % DECISION_ACCENTS.length
+  return DECISION_ACCENTS[paletteIndex]
+}
+
+function normalizeStatus(status?: string) {
+  if (!status) return "ativo"
+  return status
+    .trim()
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+}
+
+function getStatusOpacity(status?: string) {
+  switch (normalizeStatus(status)) {
+    case "ativo":
+      return 1
+    case "em andamento":
+      return 0.8
+    case "pausado":
+    case "parado":
+      return 0.6
+    case "concluido":
+      return 0.45
+    default:
+      return 0.72
+  }
+}
+
 function getEventTypeId(type: any): number {
   if (typeof type === "number") return type
   return type?.id || 1
@@ -151,6 +282,11 @@ export default function Home() {
   const selectedEvent = useMemo(
     () => events.find((e) => e.id === selectedEventId) || null,
     [events, selectedEventId]
+  )
+
+  const selectedEventAccent = useMemo(
+    () => getDecisionAccent(selectedEvent?.event_type, eventTypes),
+    [eventTypes, selectedEvent?.event_type]
   )
 
   const fetchEvents = async () => {
@@ -500,7 +636,7 @@ export default function Home() {
       {/* ─── Main Content ─── */}
       <main className="flex-1 flex">
         {/* ─── Timeline ─── */}
-        <div className={`flex-1 overflow-y-auto px-5 py-8 lg:px-8 ${panelOpen ? "max-w-[calc(100%-440px)]" : ""} transition-all duration-300`}>
+        <div className="flex-1 overflow-y-auto px-5 py-8 lg:px-8 transition-all duration-300">
           {loading ? (
             <div className="space-y-6">
               <div className="h-7 w-56 bg-muted rounded animate-pulse" />
@@ -522,7 +658,7 @@ export default function Home() {
           ) : events.length === 0 ? (
             <EmptyState onCreate={() => { setEditEventId(null); setDialogOpen(true) }} />
           ) : (
-            <div className="max-w-2xl">
+            <div className={`max-w-2xl ${panelOpen ? "" : "mx-auto"}`}>
               {/* Section header */}
               <p className="font-mono text-[11px] text-primary/70 mb-1 tracking-wide">
                 // hub
@@ -620,6 +756,8 @@ export default function Home() {
                       const childIds = eventsWithChildren.get(ev.id) || []
                       const hasParent = eventsWithParents.has(ev.id)
                       const parentIds = eventsWithParents.get(ev.id) || []
+                      const eventAccent = getDecisionAccent(ev.event_type, eventTypes)
+                      const statusOpacity = getStatusOpacity(ev.status)
 
                       return (
                         <motion.div
@@ -646,8 +784,8 @@ export default function Home() {
                             <div
                               className={`w-3.5 h-3.5 rounded-full border-[2px] transition-all duration-200 relative ${
                                 isSelected
-                                  ? "bg-primary border-primary shadow-[0_0_0_3px_rgba(169,194,108,0.15)]"
-                                  : "bg-background border-muted-foreground/40 hover:border-primary"
+                                  ? selectedEventAccent.dot
+                                  : `${eventAccent.dot} bg-background`
                               }`}
                             >
                               {/* Arrow pointing to children cards below */}
@@ -672,11 +810,12 @@ export default function Home() {
                             onDrop={(e) => handleDropOnCard(e, ev.id)}
                             className={`event-card w-full text-left p-4 rounded-lg border transition-all duration-150 relative cursor-grab active:cursor-grabbing ${
                               dragOverEventId === ev.id
-                                ? "border-primary bg-primary/[0.08] ring-2 ring-primary/30"
+                                ? "border-primary/40 bg-card/70 ring-2 ring-primary/20"
                                 : isSelected
-                                ? "border-primary/30 bg-primary/[0.04] shadow-sm"
-                                : "border-border/60 bg-card/50 hover:border-primary/20 hover:bg-card"
+                                ? "border-primary/30 bg-card/65 shadow-sm"
+                                : "border-border/60 bg-card/45 hover:border-border/80 hover:bg-card/60"
                             } ${draggedEventId === ev.id ? "opacity-40" : ""}`}
+                              style={{ opacity: statusOpacity }}
                           >
                             <div className="flex items-center gap-2.5 mb-1.5">
                               {ev.when && (
@@ -687,7 +826,7 @@ export default function Home() {
                               <Badge
                                 variant="secondary"
                                 className={`font-mono text-[10px] px-1.5 py-0.5 uppercase tracking-wider ${
-                                  isSelected ? "bg-primary/15 text-primary border-primary/20" : ""
+                                  isSelected ? selectedEventAccent.badge : eventAccent.badge
                                 }`}
                               >
                                 {getEventTypeName(ev.event_type, eventTypes)}
@@ -738,12 +877,12 @@ export default function Home() {
           {panelOpen && selectedEvent && (
             <motion.aside
               initial={{ width: 0, opacity: 0 }}
-              animate={{ width: "min(420px, 100%)", opacity: 1 }}
+              animate={{ width: "min(48vw, 960px)", opacity: 1 }}
               exit={{ width: 0, opacity: 0 }}
               transition={{ duration: 0.25, ease: [0.23, 1, 0.32, 1] }}
-              className="border-l border-border/50 bg-muted/[0.08] overflow-hidden flex-shrink-0"
+              className={`border-l overflow-hidden flex-shrink-0 ${selectedEventAccent.panel}`}
             >
-              <div className="w-[420px] h-full flex flex-col">
+              <div className="w-full h-full flex flex-col min-h-0">
                 {/* Panel header */}
                 <div className="px-5 py-4 flex items-center justify-between border-b border-border/40">
                   <span className="font-mono text-[11px] text-muted-foreground">
@@ -755,12 +894,12 @@ export default function Home() {
                 </div>
 
                 {/* Panel content */}
-                <ScrollArea className="flex-1 px-5 py-5">
+                <ScrollArea className="flex-1 min-h-0 px-5 py-5">
                   <h3 className="font-serif text-xl font-bold text-foreground mb-2.5 leading-snug">
                     {selectedEvent.name}
                   </h3>
                   <div className="flex items-center gap-2.5 mb-4">
-                    <Badge variant="secondary" className="font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5">
+                    <Badge variant="secondary" className={`font-mono text-[10px] uppercase tracking-wider px-1.5 py-0.5 ${selectedEventAccent.panelBadge}`}>
                       {getEventTypeName(selectedEvent.event_type, eventTypes)}
                     </Badge>
                     {selectedEvent.when && (
@@ -773,6 +912,33 @@ export default function Home() {
                   <p className="text-sm text-foreground/75 leading-relaxed mb-6 whitespace-pre-wrap">
                     {selectedEvent.why}
                   </p>
+
+                  {/* Panel actions */}
+                  <div className="sticky top-4 z-20 mb-5 rounded-2xl border border-border/50 px-4 py-3 space-y-2 bg-background/92 backdrop-blur-md shadow-[0_10px_30px_rgba(0,0,0,0.08)]">
+                    <Button
+                      onClick={() => { setEditEventId(selectedEvent.id); setDialogOpen(true) }}
+                      variant="outline"
+                      className="w-full h-9 text-sm"
+                    >
+                      Editar decisão
+                    </Button>
+                    <Button
+                      onClick={() => setLinkDialogOpen(true)}
+                      variant="outline"
+                      className="w-full h-9 text-sm"
+                    >
+                      <GitBranch className="h-3.5 w-3.5 mr-1.5" />
+                      Adicionar desdobramento
+                    </Button>
+                    <Button
+                      onClick={() => setDeleteConfirmId(selectedEvent.id)}
+                      variant="ghost"
+                      className="w-full h-8 text-xs text-destructive hover:text-destructive"
+                    >
+                      <Trash2 className="h-3 w-3 mr-1.5" />
+                      Excluir decisão
+                    </Button>
+                  </div>
 
                   <Separator className="my-4 bg-border/40" />
 
@@ -840,32 +1006,6 @@ export default function Home() {
                   )}
                 </ScrollArea>
 
-                {/* Panel actions */}
-                <div className="px-5 py-4 border-t border-border/40 space-y-2">
-                  <Button
-                    onClick={() => { setEditEventId(selectedEvent.id); setDialogOpen(true) }}
-                    variant="outline"
-                    className="w-full h-9 text-sm"
-                  >
-                    Editar decisão
-                  </Button>
-                  <Button
-                    onClick={() => setLinkDialogOpen(true)}
-                    variant="outline"
-                    className="w-full h-9 text-sm"
-                  >
-                    <GitBranch className="h-3.5 w-3.5 mr-1.5" />
-                    Adicionar desdobramento
-                  </Button>
-                  <Button
-                    onClick={() => setDeleteConfirmId(selectedEvent.id)}
-                    variant="ghost"
-                    className="w-full h-8 text-xs text-destructive hover:text-destructive"
-                  >
-                    <Trash2 className="h-3 w-3 mr-1.5" />
-                    Excluir decisão
-                </Button>
-                </div>
               </div>
             </motion.aside>
           )}
