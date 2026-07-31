@@ -2,7 +2,7 @@ import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { AppDataSource } from '../database/data-source';
 import { EventEntity } from '../database/entities/event.entity';
 import { EventRelationshipEntity } from '../database/entities/eventrelationship.entity';
-import { GeminiClient } from './gemini.client';
+import { GroqClient } from './groq.client';
 
 export type DecisionAnalysis = {
   resumo: string;
@@ -16,7 +16,7 @@ export type DecisionAnalysis = {
 export class AnalysisService {
   private readonly logger = new Logger(AnalysisService.name);
 
-  constructor(private readonly gemini: GeminiClient) {}
+  constructor(private readonly groq: GroqClient) {}
 
   async analyzeForUser(userId: number): Promise<DecisionAnalysis> {
     const events = await AppDataSource.getRepository(EventEntity)
@@ -45,7 +45,7 @@ export class AnalysisService {
     const prompt = this.buildPrompt(events, relationships);
 
     try {
-      const result = await this.gemini.generateJSON(prompt);
+      const result = await this.groq.generateJSON(prompt);
       return this.normalize(result);
     } catch (error: any) {
       this.logger.warn(
@@ -73,9 +73,11 @@ export class AnalysisService {
           .join('\n')
       : 'Nenhuma relação entre decisões foi registrada ainda.';
 
-    return `Você é um analista que ajuda uma pessoa a refletir sobre a própria trajetória de vida a partir de um histórico de decisões que ela registrou em um app pessoal chamado Myggdrasil.
+    return `Você é um mentor pessoal que conversa diretamente com o usuário do Myggdrasil, um app onde ele registra as decisões importantes da própria vida (estudos, carreira, projetos, finanças, etc).
 
-Abaixo está a lista de decisões da pessoa, seguida das relações de causa/consequência entre elas (quando existirem).
+Fale SEMPRE em segunda pessoa, diretamente com o usuário ("você fez...", "você poderia...", nunca "a pessoa" ou "ele/ela"). O tom deve ser próximo, caloroso e direto, como um mentor que conhece a trajetória dele e quer ajudar de verdade — nada de linguagem genérica ou corporativa.
+
+Abaixo está o histórico de decisões do usuário, seguido das relações de causa/consequência entre elas (quando existirem).
 
 DECISÕES:
 ${decisionsList}
@@ -86,22 +88,22 @@ ${relationshipsList}
 Analise esses dados e responda SOMENTE com um JSON válido (sem markdown, sem texto fora do JSON) seguindo exatamente este formato:
 
 {
-  "resumo": "um parágrafo curto (2-4 frases) resumindo os principais padrões que você percebeu na trajetória",
+  "resumo": "um parágrafo curto (2-4 frases), falando diretamente com o usuário, destacando os padrões e o momento atual da trajetória dele",
   "decisoes_mais_proveitosas": [
-    { "nome": "nome exato da decisão", "motivo": "por que essa decisão parece ter sido especialmente proveitosa" }
+    { "nome": "nome exato da decisão", "motivo": "por que essa decisão foi especialmente proveitosa pra você, em segunda pessoa" }
   ],
   "decisoes_boas_consequencias": [
-    { "nome": "nome exato da decisão", "motivo": "que consequências boas ela gerou, com base nas relações registradas" }
+    { "nome": "nome exato da decisão", "motivo": "que consequências boas ela gerou pra você, com base nas relações registradas, em segunda pessoa" }
   ],
   "recomendacoes": [
-    "sugestão objetiva de próxima decisão ou área a considerar, em uma frase"
+    "sugestão CONCRETA e específica de próximo passo, em segunda pessoa — não repita uma decisão que o usuário já tomou, proponha uma ação nova e prática. Exemplos do nível de especificidade esperado: 'Já que você quer fazer pós em IA, vale testar um curso técnico curto de Machine Learning antes de se comprometer com a pós inteira, pra sentir se é isso mesmo que te motiva' ou 'Como seu projeto em C++ está pausado, separa 3 dias esta semana só pra retomar ele em blocos de 1h, sem se cobrar terminar tudo de uma vez'"
   ],
   "categorias_atencao": [
-    { "categoria": "nome da categoria", "motivo": "por que essa categoria merece mais atenção (ex: poucas decisões, decisões pausadas, resultados fracos)" }
+    { "categoria": "nome da categoria", "motivo": "por que essa categoria merece mais atenção sua (ex: poucas decisões, decisões pausadas, resultados fracos), em segunda pessoa e com uma sugestão prática embutida" }
   ]
 }
 
-Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos dados fornecidos, sem inventar decisões que não estão na lista. Responda em português do Brasil.`;
+Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos dados fornecidos, sem inventar decisões que não estão na lista. As recomendações precisam ser acionáveis de verdade (algo que o usuário consiga fazer essa semana), não uma reafirmação do que ele já decidiu. Responda em português do Brasil.`;
   }
 
   private normalize(raw: any): DecisionAnalysis {
@@ -187,7 +189,7 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
       .filter(({ impact }) => impact > 0)
       .map(({ ev, impact }) => ({
         nome: ev.name,
-        motivo: `Gerou ${impact} desdobramento(s) registrado(s), sugerindo alto impacto na sua trajetória.`,
+        motivo: `Essa decisão gerou ${impact} desdobramento(s) na sua trajetória — foi um dos pontos que mais moveu as coisas pra você.`,
       }));
 
     const decisoesBoasConsequencias = sortedByImpact
@@ -195,18 +197,18 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
       .filter(({ impact }) => impact > 0)
       .map(({ ev, impact }) => ({
         nome: ev.name,
-        motivo: `Tem ${impact} consequência(s) ligada(s), indicando continuidade prática após a decisão.`,
+        motivo: `Você já colheu ${impact} consequência(s) dessa decisão, sinal de que ela seguiu rendendo frutos práticos pra você.`,
       }));
 
     const recomendacoes: string[] = [];
     if (statusCounts.pausado > 0) {
       recomendacoes.push(
-        `Você tem ${statusCounts.pausado} decisão(ões) pausada(s): escolha 1 para retomar nesta semana com um próximo passo objetivo.`,
+        `Você tem ${statusCounts.pausado} decisão(ões) pausada(s). Escolhe 1 delas e separa um horário fixo essa semana só pra dar o próximo passo, mesmo que pequeno.`,
       );
     }
     if (relationships.length < Math.max(2, Math.floor(events.length / 2))) {
       recomendacoes.push(
-        'Registre mais relações entre decisões para enxergar melhor causa e consequência no seu histórico.',
+        'Você ainda registrou poucas relações entre as decisões. Na próxima vez que uma decisão nova nascer de outra, arrasta um card sobre o outro pra ligar os dois — isso vai deixar sua árvore muito mais rica pra próxima análise.',
       );
     }
     if (
@@ -214,12 +216,12 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
       topCategories[0][1] >= Math.ceil(events.length * 0.5)
     ) {
       recomendacoes.push(
-        `A categoria ${topCategories[0][0]} concentra grande parte das decisões; avalie equilibrar com outras áreas de vida.`,
+        `Boa parte das suas decisões está concentrada em ${topCategories[0][0]}. Vale reservar um tempo pra pensar em pelo menos uma decisão pequena em outra área da sua vida esse mês, só pra manter o equilíbrio.`,
       );
     }
     if (recomendacoes.length === 0) {
       recomendacoes.push(
-        'Seu histórico está bem distribuído; mantenha revisões quinzenais para ajustar prioridades.',
+        'Seu histórico está bem distribuído entre as áreas. Mantém o hábito de revisar sua árvore a cada duas semanas pra reajustar prioridades enquanto elas ainda são fáceis de mudar.',
       );
     }
 
@@ -230,13 +232,13 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
         const paused = pausedByType.get(categoria) || 0;
         const motivo =
           paused > 0
-            ? `${paused} de ${total} decisão(ões) nessa categoria está(ão) pausada(s).`
-            : `A categoria tem apenas ${total} decisão(ões) registrada(s), o que pode indicar baixa exploração.`;
+            ? `Você tem ${paused} de ${total} decisão(ões) pausada(s) nessa categoria — vale revisar se ainda faz sentido continuar ou se é hora de encerrar de vez.`
+            : `Você registrou só ${total} decisão(ões) nessa categoria até agora. Se essa área importa pra você, pode ser um sinal pra explorar mais ela.`;
         return { categoria, motivo };
       });
 
     return {
-      resumo: `Análise local gerada sem Gemini externa. Você tem ${events.length} decisões e ${relationships.length} relações registradas, com destaque para ${topCategoryText}. Status atual: ${statusCounts.ativo} ativa(s), ${statusCounts.andamento} em andamento, ${statusCounts.pausado} pausada(s) e ${statusCounts.concluido} concluída(s).`,
+      resumo: `Análise local gerada sem IA externa (indisponível no momento). Você tem ${events.length} decisões e ${relationships.length} relações registradas, com destaque para ${topCategoryText}. Seu momento atual: ${statusCounts.ativo} decisão(ões) ativa(s), ${statusCounts.andamento} em andamento, ${statusCounts.pausado} pausada(s) e ${statusCounts.concluido} concluída(s).`,
       decisoes_mais_proveitosas:
         decisoesMaisProveitosas.length > 0
           ? decisoesMaisProveitosas
@@ -244,7 +246,7 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
               {
                 nome: events[0].name,
                 motivo:
-                  'Ainda há poucas relações explícitas para medir impacto; registre mais vínculos entre decisões para melhorar esta leitura.',
+                  'Você ainda tem poucas relações registradas pra medir o impacto real dessa decisão. Liga ela a outras decisões que vieram depois pra essa leitura ficar mais precisa.',
               },
             ],
       decisoes_boas_consequencias:
@@ -254,7 +256,7 @@ Liste no máximo 3 itens em cada array. Seja específico e baseie-se apenas nos 
               {
                 nome: events[0].name,
                 motivo:
-                  'Não há desdobramentos suficientes registrados para destacar consequências com confiança ainda.',
+                  'Ainda não há desdobramentos suficientes registrados pra destacar consequências com confiança. Vale registrar o que veio depois dela.',
               },
             ],
       recomendacoes: recomendacoes.slice(0, 3),

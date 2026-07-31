@@ -1,11 +1,12 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
 /**
- * Cliente fino para Groq API (free tier).
+ * Cliente fino para a Groq API (tier gratuito, sem cartão de crédito).
  * Usa o fetch nativo do Node (18+) — sem dependência extra.
+ * Tenta uma lista de modelos em cascata caso um esteja indisponível/limitado.
  */
 @Injectable()
-export class GeminiClient {
+export class GroqClient {
   private readonly apiKey = process.env.GROQ_API_KEY;
   private readonly configuredModel =
     process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
