@@ -5,7 +5,7 @@ import { AnalysisService } from './analysis.service';
 export class AnalysisController {
   constructor(private readonly analysisService: AnalysisService) {}
 
-  @Get('events/analysis')
+  @Get('analysis')
   async analyze(@Request() req) {
     const userId = req.user.sub;
     return this.analysisService.analyzeForUser(userId);

@@ -1,4 +1,4 @@
-import axios from 'axios'
+import axios from "axios";
 
 /**
  * Cliente HTTP para as rotas do NestJS.
@@ -10,140 +10,162 @@ import axios from 'axios'
  *   Nesse caso, o backend precisa ter CORS configurado.
  */
 
-const isDev = import.meta.env.DEV
-const API_BASE = isDev ? '/api' : (import.meta.env.VITE_API_URL || '/api')
+const isDev = import.meta.env.DEV;
+const API_BASE = isDev ? "/api" : import.meta.env.VITE_API_URL || "/api";
 
 export const api = axios.create({
   baseURL: API_BASE,
   withCredentials: true,
-  headers: { 'Content-Type': 'application/json' },
-})
+  headers: { "Content-Type": "application/json" },
+});
 
 export type User = {
-  id: number
-  name: string
-  email: string
-  email_verified: boolean
-  birth_dt?: string
-  created_at?: string
-  updated_at?: string
-}
+  id: number;
+  name: string;
+  email: string;
+  email_verified: boolean;
+  birth_dt?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 export type EventType = {
-  id: number
-  name: string
-  is_default: boolean
-}
+  id: number;
+  name: string;
+  is_default: boolean;
+};
 
 export type Event = {
-  id: number
-  name: string
-  event_type: EventType | number
-  when?: string
-  why: string
-  status: string
-  created_at?: string
-  updated_at?: string
-}
+  id: number;
+  name: string;
+  event_type: EventType | number;
+  when?: string;
+  why: string;
+  status: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
-export type CreateEventInput = Omit<Event, 'id'>
+export type CreateEventInput = Omit<Event, "id">;
 
 export type ApiMessage = {
-  message: string
-}
+  message: string;
+};
 
 export type EventRelationship = {
-  id: number
-  parent: Event
-  child: Event
-  relationship?: string
-  created_at?: string
-  updated_at?: string
-}
+  id: number;
+  parent: Event;
+  child: Event;
+  relationship?: string;
+  created_at?: string;
+  updated_at?: string;
+};
 
 // ---- API Functions ----
 
 export async function getCurrentUser(): Promise<User> {
-  const { data } = await api.get<{ user: User }>('/auth/me')
-  return data.user
+  const { data } = await api.get<{ user: User }>("/auth/me");
+  return data.user;
 }
 
 export async function getEvents(): Promise<Event[]> {
-  const { data } = await api.get<Event[]>('/events')
-  return data
+  const { data } = await api.get<Event[]>("/events");
+  return data;
 }
 
 export async function getEvent(id: number): Promise<Event> {
-  const { data } = await api.get<Event>(`/events/${id}`)
-  return data
+  const { data } = await api.get<Event>(`/events/${id}`);
+  return data;
 }
 
-export async function createEvent(input: CreateEventInput): Promise<{ id: number }> {
-  const { data } = await api.post<ApiMessage>('/events', input)
-  const match = data.message.match(/\[(\d+)\]/)
-  return { id: match ? Number(match[1]) : 0 }
+export async function createEvent(
+  input: CreateEventInput
+): Promise<{ id: number }> {
+  const { data } = await api.post<ApiMessage>("/events", input);
+  const match = data.message.match(/\[(\d+)\]/);
+  return { id: match ? Number(match[1]) : 0 };
 }
 
-export async function updateEvent(id: number, input: CreateEventInput): Promise<void> {
-  await api.put(`/events/${id}`, input)
+export async function updateEvent(
+  id: number,
+  input: CreateEventInput
+): Promise<void> {
+  await api.put(`/events/${id}`, input);
 }
 
 export async function deleteEvent(id: number): Promise<void> {
-  await api.delete(`/events/${id}`)
+  await api.delete(`/events/${id}`);
 }
 
-export async function createRelationship(parentId: number, childId: number, relationship?: string): Promise<EventRelationship> {
-  const { data } = await api.post<EventRelationship>('/event-relationships', { parentId, childId, relationship })
-  return data
+export async function createRelationship(
+  parentId: number,
+  childId: number,
+  relationship?: string
+): Promise<EventRelationship> {
+  const { data } = await api.post<EventRelationship>("/event-relationships", {
+    parentId,
+    childId,
+    relationship,
+  });
+  return data;
 }
 
-export async function getRelationships(eventId: number): Promise<EventRelationship[]> {
-  const { data } = await api.get<EventRelationship[]>(`/events/${eventId}/relationships`)
-  return data
+export async function getRelationships(
+  eventId: number
+): Promise<EventRelationship[]> {
+  const { data } = await api.get<EventRelationship[]>(
+    `/events/${eventId}/relationships`
+  );
+  return data;
 }
 
 export async function getAllRelationships(): Promise<EventRelationship[]> {
-  const { data } = await api.get<EventRelationship[]>('/event-relationships')
-  return data
+  const { data } = await api.get<EventRelationship[]>("/event-relationships");
+  return data;
 }
 
 export async function deleteRelationship(id: number): Promise<void> {
-  await api.delete(`/event-relationships/${id}`)
+  await api.delete(`/event-relationships/${id}`);
 }
 
 export type DecisionAnalysis = {
-  resumo: string
-  decisoes_mais_proveitosas: { nome: string; motivo: string }[]
-  decisoes_boas_consequencias: { nome: string; motivo: string }[]
-  recomendacoes: string[]
-  categorias_atencao: { categoria: string; motivo: string }[]
-}
+  resumo: string;
+  decisoes_mais_proveitosas: { nome: string; motivo: string }[];
+  decisoes_boas_consequencias: { nome: string; motivo: string }[];
+  recomendacoes: string[];
+  categorias_atencao: { categoria: string; motivo: string }[];
+};
 
 export async function getAiAnalysis(): Promise<DecisionAnalysis> {
-  const { data } = await api.get<DecisionAnalysis>('/events/analysis')
-  return data
+  const { data } = await api.get<DecisionAnalysis>("/analysis");
+  return data;
 }
 
 export async function getEventTypes(): Promise<EventType[]> {
-  const { data } = await api.get<EventType[]>('/event-types')
-  return data
+  const { data } = await api.get<EventType[]>("/event-types");
+  return data;
 }
 
 export async function createEventType(name: string): Promise<{ id: number }> {
-  const { data } = await api.post<ApiMessage>('/event-types', { name })
-  const match = data.message.match(/\[(\d+)\]/)
-  return { id: match ? Number(match[1]) : 0 }
+  const { data } = await api.post<ApiMessage>("/event-types", { name });
+  const match = data.message.match(/\[(\d+)\]/);
+  return { id: match ? Number(match[1]) : 0 };
 }
 
 // Fallback estático, usado apenas enquanto GET /event-types não responde
 // (ex: primeira renderização, antes do fetch terminar).
 export const EVENT_TYPE_IDS = [
-  { id: 1, name: 'Decisão' },
-  { id: 2, name: 'Estudo' },
-  { id: 3, name: 'Carreira' },
-  { id: 4, name: 'Projeto pessoal' },
-  { id: 5, name: 'Financeiro' },
-  { id: 6, name: 'Pessoal' },
-] as const
+  { id: 1, name: "Decisão" },
+  { id: 2, name: "Estudo" },
+  { id: 3, name: "Carreira" },
+  { id: 4, name: "Projeto pessoal" },
+  { id: 5, name: "Financeiro" },
+  { id: 6, name: "Pessoal" },
+] as const;
 
-export const EVENT_STATUS_OPTIONS = ['ativo', 'concluído', 'em andamento', 'pausado'] as const
+export const EVENT_STATUS_OPTIONS = [
+  "ativo",
+  "concluído",
+  "em andamento",
+  "pausado",
+] as const;

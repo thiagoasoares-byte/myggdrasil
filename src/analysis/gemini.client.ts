@@ -1,61 +1,124 @@
 import { Injectable, InternalServerErrorException } from '@nestjs/common';
 
 /**
- * Cliente fino para a Gemini API (Google AI Studio).
+ * Cliente fino para Groq API (free tier).
  * Usa o fetch nativo do Node (18+) — sem dependência extra.
- *
- * Modelo padrão: gemini-2.5-flash-lite, que tem a cota diária mais generosa
- * no tier gratuito. Pode ser trocado via env GEMINI_MODEL se necessário.
  */
 @Injectable()
 export class GeminiClient {
-  private readonly apiKey = process.env.GEMINI_API_KEY;
-  private readonly model = process.env.GEMINI_MODEL || 'gemini-2.5-flash-lite';
-  private readonly baseUrl = 'https://generativelanguage.googleapis.com/v1beta/models';
+  private readonly apiKey = process.env.GROQ_API_KEY;
+  private readonly configuredModel =
+    process.env.GROQ_MODEL || 'llama-3.1-8b-instant';
+  private readonly baseUrl = 'https://api.groq.com/openai/v1/chat/completions';
+  private readonly fallbackModels = [
+    'llama-3.1-8b-instant',
+    'llama-3.3-70b-versatile',
+    'qwen/qwen3-32b',
+  ];
+
+  private getModelsToTry(): string[] {
+    const models = [this.configuredModel, ...this.fallbackModels]
+      .map((model) => model.trim())
+      .filter(Boolean);
+
+    return Array.from(new Set(models));
+  }
 
   /**
-   * Envia um prompt e espera de volta um JSON já estruturado (usa o modo
-   * responseMimeType: application/json do Gemini para evitar markdown/texto solto).
+   * Envia um prompt e espera de volta um JSON estruturado.
    */
   async generateJSON(prompt: string): Promise<any> {
     if (!this.apiKey) {
       throw new InternalServerErrorException(
-        'GEMINI_API_KEY não configurada no .env do backend',
+        'GROQ_API_KEY não configurada no .env do backend',
       );
     }
 
-    const url = `${this.baseUrl}/${this.model}:generateContent?key=${this.apiKey}`;
+    const models = this.getModelsToTry();
+    let lastError = 'Falha desconhecida ao chamar a Groq API.';
 
-    const response = await fetch(url, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        contents: [{ parts: [{ text: prompt }] }],
-        generationConfig: {
-          responseMimeType: 'application/json',
-          temperature: 0.4,
+    for (const [index, model] of models.entries()) {
+      const response = await fetch(this.baseUrl, {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${this.apiKey}`,
+          'Content-Type': 'application/json',
         },
-      }),
-    });
+        body: JSON.stringify({
+          model,
+          temperature: 0.4,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'Responda sempre com JSON válido e sem markdown. Não adicione texto fora do JSON.',
+            },
+            { role: 'user', content: prompt },
+          ],
+        }),
+      });
 
-    if (!response.ok) {
-      const errText = await response.text().catch(() => '');
-      throw new InternalServerErrorException(
-        `Erro ao chamar a Gemini API (${response.status}): ${errText.slice(0, 300)}`,
-      );
+      if (!response.ok) {
+        const errText = await response.text().catch(() => '');
+        lastError = `Erro ao chamar a Groq API com modelo ${model} (${response.status}): ${errText.slice(0, 300)}`;
+
+        const canFallback = response.status === 404 || response.status === 429 || response.status >= 500;
+        const hasNextModel = index < models.length - 1;
+
+        if (canFallback && hasNextModel) {
+          continue;
+        }
+
+        throw new InternalServerErrorException(lastError);
+      }
+
+      const data = await response.json();
+      const text = data?.choices?.[0]?.message?.content;
+
+      if (!text) {
+        lastError = `A Groq API não retornou conteúdo com o modelo ${model}.`;
+        const hasNextModel = index < models.length - 1;
+        if (hasNextModel) {
+          continue;
+        }
+        throw new InternalServerErrorException(lastError);
+      }
+
+      try {
+        return this.parseJSON(text);
+      } catch {
+        lastError = `A Groq API retornou um JSON inválido com o modelo ${model}.`;
+        const hasNextModel = index < models.length - 1;
+        if (hasNextModel) {
+          continue;
+        }
+        throw new InternalServerErrorException(lastError);
+      }
     }
 
-    const data = await response.json();
-    const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+    throw new InternalServerErrorException(lastError);
+  }
 
-    if (!text) {
-      throw new InternalServerErrorException('A Gemini API não retornou conteúdo.');
-    }
+  private parseJSON(text: string): any {
+    const trimmed = text.trim();
 
     try {
-      return JSON.parse(text);
+      return JSON.parse(trimmed);
     } catch {
-      throw new InternalServerErrorException('A Gemini API retornou um JSON inválido.');
+      // fallback comum: modelo devolve trecho com markdown ou texto extra
     }
+
+    const fencedMatch = trimmed.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+    if (fencedMatch?.[1]) {
+      return JSON.parse(fencedMatch[1]);
+    }
+
+    const firstBrace = trimmed.indexOf('{');
+    const lastBrace = trimmed.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace !== -1 && lastBrace > firstBrace) {
+      return JSON.parse(trimmed.slice(firstBrace, lastBrace + 1));
+    }
+
+    throw new Error('Invalid JSON payload');
   }
 }
