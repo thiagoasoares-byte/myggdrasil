@@ -42,7 +42,7 @@ export default function Signup() {
     try {
       await signup(name, email, password, birthDt || undefined)
       toast.success("Conta criada com sucesso!", {
-        description: "Verifique seu e-mail para confirmar a conta.",
+        description: "Você já pode fazer login.",
       })
       setLocation("/login")
     } catch (err: any) {

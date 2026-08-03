@@ -4,6 +4,7 @@ import { EventEntity } from "./entities/event.entity";
 import { EventType } from "./entities/eventtype.entity";
 import { EventRelationshipEntity } from "./entities/eventrelationship.entity";
 import { EmailTokenEntity } from "./entities/email_token.entity";
+import { AnalysisCacheEntity } from "./entities/analysis_cache.entity";
 
 export const AppDataSource = new DataSource({
   type: "mysql",
@@ -12,5 +13,5 @@ export const AppDataSource = new DataSource({
   username: process.env.MYSQLUSER,
   password: process.env.MYSQLPASSWORD,
   database: process.env.BDNAME,
-  entities: [UserEntity, EventEntity, EventType, EventRelationshipEntity, EmailTokenEntity],
+  entities: [UserEntity, EventEntity, EventType, EventRelationshipEntity, EmailTokenEntity, AnalysisCacheEntity],
 });

@@ -293,3 +293,29 @@
     }
   }
 }
+
+/* Exportação da árvore (Cmd/Ctrl+P dispara a partir do botão "Exportar") */
+@media print {
+  body * {
+    visibility: hidden;
+  }
+  #myggdrasil-print-area,
+  #myggdrasil-print-area * {
+    visibility: visible;
+  }
+  #myggdrasil-print-area {
+    position: absolute;
+    inset: 0;
+    background: white !important;
+    color: black !important;
+  }
+  #myggdrasil-print-area .event-card {
+    break-inside: avoid;
+    border-color: #ccc !important;
+    background: white !important;
+  }
+  #myggdrasil-print-area button {
+    display: none !important;
+  }
+}
+

@@ -1,4 +1,4 @@
-import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException, Inject } from '@nestjs/common';
+import { Injectable, ConflictException, BadRequestException, UnauthorizedException, NotFoundException } from '@nestjs/common';
 import { UserEntity } from '../database/entities/user.entity';
 import { UserCreateDTO } from './dto/create-user.dto';
 import { AppDataSource } from '../database/data-source';
@@ -6,16 +6,10 @@ import { hashMaker } from '../utils/hash';
 import { UserPutDTO } from './dto/put-user.dto';
 import { UserDeleteDTO } from './dto/delete-user.dto';
 import * as bcrypt from 'bcrypt';
-import { ClientKafka } from '@nestjs/microservices';
 import { EmailTokenEntity } from '../database/entities/email_token.entity';
-import { randomUUID } from 'crypto';
 
 @Injectable()
 export class UsersService {
-  constructor(
-    @Inject('KAFKA_SERVICE') private kafkaClient: ClientKafka
-  ) {}
-
   async signupPost(dto : UserCreateDTO ): Promise<{message:any}> {
     const user = new UserEntity()
     user.name = dto.name
@@ -27,20 +21,10 @@ export class UsersService {
     if(await userRepository.findOne({where : { email: dto.email }})){
       throw new ConflictException(`Não foi possível fazer o signup`)
     }else{
-      const token = randomUUID()
+      // Kafka + envio de e-mail de boas-vindas foram removidos do fluxo de produção
+      // (ver docs/kafka-email-removal.md). A conta é criada e liberada direto,
+      // sem etapa de verificação por e-mail.
       await userRepository.save(user)
-
-      const emailtoken = new EmailTokenEntity()
-      emailtoken.user_id = user
-      emailtoken.token = await hashMaker(token)
-      emailtoken.expires_at = new Date(Date.now() + 86400000)
-      await AppDataSource.getRepository(EmailTokenEntity).save(emailtoken)
-
-      await this.kafkaClient.emit('user.signup',{
-        email: dto.email,
-        name: dto.name,
-        token: token
-      })
       return { message: `Usuário foi criado com sucesso!`}
     }
   }
