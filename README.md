@@ -113,6 +113,11 @@ openssl genrsa -out private.key 2048
 openssl rsa -in private.key -pubout -out public.key
 ```
 
+For Vercel or other hosted environments, it is usually easier to store the PEM
+contents directly in `JWT_PRIVATE_KEY` and `JWT_PUBLIC_KEY` instead of pointing
+to local files. The backend now accepts either a raw PEM value or a readable
+file path.
+
 ## Run Locally
 
 **Backend**

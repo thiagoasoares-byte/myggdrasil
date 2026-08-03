@@ -1,14 +1,5 @@
 import axios from "axios";
 
-/**
- * Cliente HTTP para as rotas do NestJS.
- *
- * Comportamento:
- * - Dev (pnpm run dev): usa o proxy do Vite (/api -> localhost:3000)
- *   O proxy funciona porque frontend e proxy estão na mesma origem.
- * - Produção (dist): usa a URL direta do backend via VITE_API_URL.
- *   Nesse caso, o backend precisa ter CORS configurado.
- */
 
 const isDev = import.meta.env.DEV;
 const API_BASE = isDev ? "/api" : import.meta.env.VITE_API_URL || "/api";

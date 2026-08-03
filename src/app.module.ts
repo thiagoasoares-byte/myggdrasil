@@ -14,14 +14,14 @@ import { EventType } from './database/entities/eventtype.entity';
 import { EmailTokenEntity } from './database/entities/email_token.entity';
 import { EventRelationshipEntity } from './database/entities/eventrelationship.entity';
 import { AnalysisCacheEntity } from './database/entities/analysis_cache.entity';
-import * as fs from 'fs';
+import { resolveSecretValue } from './utils/secret';
 
 const sslEnabled = process.env.MYSQL_SSL === 'true';
-const sslCaPath = process.env.MYSQL_SSL_CA;
+const sslCa = resolveSecretValue(process.env.MYSQL_SSL_CA);
 const ssl = sslEnabled
   ? {
-      rejectUnauthorized: !!sslCaPath,
-      ca: sslCaPath ? fs.readFileSync(sslCaPath).toString() : undefined,
+      rejectUnauthorized: !!sslCa,
+      ca: sslCa,
     }
   : undefined;
 
