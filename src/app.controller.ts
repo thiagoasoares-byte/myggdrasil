@@ -1,5 +1,6 @@
 import { Controller, Get } from '@nestjs/common';
 import { AppService } from './app.service';
+import { SkipAuth } from './decorators/publickey';
 
 @Controller()
 export class AppController {
@@ -8,5 +9,11 @@ export class AppController {
   @Get()
   sortDataMenor(): string {
     return this.appService.getHello();
+  }
+
+  @SkipAuth()
+  @Get('healthz')
+  healthCheck() {
+    return { status: 'ok' };
   }
 }

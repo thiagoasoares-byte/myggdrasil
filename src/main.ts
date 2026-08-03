@@ -9,6 +9,13 @@ import { AppDataSource } from "./database/data-source";
 async function bootstrap() { 
   const app = await NestFactory.create(AppModule);
 
+  // CORS: precisa liberar explicitamente o domínio do frontend (Vercel),
+  // já que agora frontend e backend ficam em domínios diferentes.
+  app.enableCors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
+  })
+
   // Kafka foi removido do fluxo de produção (ver docs/kafka-email-removal.md).
   app.useGlobalPipes(new ValidationPipe({ transform: true }))
   app.use(cookieParser())

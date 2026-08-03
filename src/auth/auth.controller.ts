@@ -17,7 +17,10 @@ export class AuthController {
     res.cookie('mg_token', auth.accessToken, {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
-      sameSite: 'lax',
+      // 'none' é obrigatório quando frontend e backend estão em domínios
+      // diferentes (Vercel + Render); exige secure:true, por isso o cookie
+      // só funciona sobre HTTPS em produção.
+      sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax',
       maxAge: 24 * 60 * 60 * 1000,
     })
     // return message but not token
