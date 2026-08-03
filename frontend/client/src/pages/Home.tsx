@@ -16,7 +16,7 @@ import { ScrollArea } from "@/components/ui/scroll-area"
 import { useAuth } from "@/contexts/AuthContext"
 import { getEvents, getRelationships, getAllRelationships, getEventTypes, createEventType, getAiAnalysis, createEvent, updateEvent, deleteEvent, createRelationship, deleteRelationship, EVENT_TYPE_IDS, EVENT_STATUS_OPTIONS, type Event, type EventType, type EventRelationship, type DecisionAnalysis, type CreateEventInput } from "@/api"
 import { useLocation } from "wouter"
-import { useEffect, useState, useMemo } from "react"
+import { useEffect, useState, useMemo, useRef } from "react"
 import { useDebounce } from "@/hooks/useDebounce"
 import { toast } from "sonner"
 import {
@@ -35,6 +35,9 @@ import {
   Search,
   BarChart3,
   Sparkles,
+  Download,
+  Network,
+  List,
 } from "lucide-react"
 import { useTheme } from "@/contexts/ThemeContext"
 import {
@@ -242,6 +245,141 @@ function formatDate(when: string | undefined): string {
   return when.substring(0, 10)
 }
 
+// ---- Tree view: layout em níveis a partir das relações pai → filho ----
+function TreeView({
+  events,
+  relationships,
+  eventTypes,
+  selectedEventId,
+  onSelect,
+}: {
+  events: Event[]
+  relationships: EventRelationship[]
+  eventTypes: EventType[]
+  selectedEventId: number | null
+  onSelect: (id: number) => void
+}) {
+  const { positions, edges, width, height } = useMemo(() => {
+    const NODE_W = 176
+    const NODE_H = 64
+    const GAP_X = 28
+    const GAP_Y = 76
+
+    const childrenMap = new Map<number, number[]>()
+    relationships.forEach((r) => {
+      const list = childrenMap.get(r.parent.id) || []
+      list.push(r.child.id)
+      childrenMap.set(r.parent.id, list)
+    })
+    const childIds = new Set(relationships.map((r) => r.child.id))
+    const eventIds = new Set(events.map((e) => e.id))
+    const roots = events.filter((ev) => !childIds.has(ev.id))
+
+    const levelOf = new Map<number, number>()
+    const visited = new Set<number>()
+    const queue: { id: number; level: number }[] = roots.map((r) => ({ id: r.id, level: 0 }))
+    while (queue.length) {
+      const next = queue.shift()!
+      if (visited.has(next.id)) continue
+      visited.add(next.id)
+      levelOf.set(next.id, next.level)
+      const kids = childrenMap.get(next.id) || []
+      kids.forEach((cid) => {
+        if (eventIds.has(cid) && !visited.has(cid)) queue.push({ id: cid, level: next.level + 1 })
+      })
+    }
+    // fallback pra qualquer evento não alcançado (ex: ciclo)
+    events.forEach((ev) => {
+      if (!levelOf.has(ev.id)) levelOf.set(ev.id, 0)
+    })
+
+    const byLevel = new Map<number, number[]>()
+    events.forEach((ev) => {
+      const lvl = levelOf.get(ev.id)!
+      const arr = byLevel.get(lvl) || []
+      arr.push(ev.id)
+      byLevel.set(lvl, arr)
+    })
+
+    const positions = new Map<number, { x: number; y: number }>()
+    const levels = Array.from(byLevel.keys()).sort((a, b) => a - b)
+    let maxRowWidth = 0
+    levels.forEach((lvl) => {
+      const ids = byLevel.get(lvl)!
+      ids.forEach((id, i) => {
+        positions.set(id, { x: i * (NODE_W + GAP_X), y: lvl * (NODE_H + GAP_Y) })
+      })
+      maxRowWidth = Math.max(maxRowWidth, ids.length * (NODE_W + GAP_X))
+    })
+
+    const edges = relationships
+      .filter((r) => positions.has(r.parent.id) && positions.has(r.child.id))
+      .map((r) => {
+        const from = positions.get(r.parent.id)!
+        const to = positions.get(r.child.id)!
+        return {
+          id: r.id,
+          x1: from.x + NODE_W / 2,
+          y1: from.y + NODE_H,
+          x2: to.x + NODE_W / 2,
+          y2: to.y,
+        }
+      })
+
+    return {
+      positions,
+      edges,
+      width: Math.max(maxRowWidth, NODE_W) + 40,
+      height: levels.length * (NODE_H + GAP_Y) + 40,
+    }
+  }, [events, relationships])
+
+  if (events.length === 0) return null
+
+  return (
+    <div className="overflow-x-auto overflow-y-hidden pb-6 -mx-1 px-1">
+      <div className="relative" style={{ width, height, minWidth: "100%" }}>
+        <svg className="absolute inset-0 pointer-events-none" width={width} height={height}>
+          {edges.map((e) => (
+            <path
+              key={e.id}
+              d={`M ${e.x1} ${e.y1} C ${e.x1} ${(e.y1 + e.y2) / 2}, ${e.x2} ${(e.y1 + e.y2) / 2}, ${e.x2} ${e.y2}`}
+              fill="none"
+              stroke="currentColor"
+              strokeWidth={1.5}
+              className="text-border"
+            />
+          ))}
+        </svg>
+        {events.map((ev) => {
+          const pos = positions.get(ev.id)
+          if (!pos) return null
+          const accent = getDecisionAccent(ev.event_type, eventTypes)
+          const isSelected = ev.id === selectedEventId
+          return (
+            <button
+              key={ev.id}
+              onClick={() => onSelect(ev.id)}
+              className={`event-card absolute text-left p-2.5 rounded-lg border transition-all ${
+                isSelected ? accent.cardSelected : accent.card
+              }`}
+              style={{ left: pos.x, top: pos.y, width: 176, height: 64 }}
+            >
+              <div className="flex items-center gap-1.5 mb-1">
+                <span className={`h-1.5 w-1.5 rounded-full ${accent.dot}`} />
+                <span className="font-mono text-[9px] uppercase tracking-wider text-muted-foreground truncate">
+                  {getEventTypeName(ev.event_type, eventTypes)}
+                </span>
+              </div>
+              <p className="text-xs font-medium text-foreground line-clamp-2 leading-snug">{ev.name}</p>
+            </button>
+          )
+        })}
+      </div>
+    </div>
+  )
+}
+
 // ---- Main Component ----
 export default function Home() {
   const { user, logout } = useAuth()
@@ -264,6 +402,8 @@ export default function Home() {
   // Busca com debounce
   const [searchQuery, setSearchQuery] = useState("")
   const debouncedSearch = useDebounce(searchQuery, 250)
+  const searchInputRef = useRef<HTMLInputElement>(null)
+  const [viewMode, setViewMode] = useState<"list" | "tree">("list")
 
   // Estatísticas do hub
   const [allRelationships, setAllRelationships] = useState<EventRelationship[]>([])
@@ -335,6 +475,29 @@ export default function Home() {
     fetchAllRelationships()
     fetchEventTypes()
   }, [])
+
+  // Atalhos de teclado: Cmd/Ctrl+K foca a busca, N abre "Nova decisão"
+  useEffect(() => {
+    const anyDialogOpen = dialogOpen || aiDialogOpen || linkDialogOpen
+    const handler = (e: KeyboardEvent) => {
+      const isMac = navigator.platform.toUpperCase().includes("MAC")
+      if ((isMac ? e.metaKey : e.ctrlKey) && e.key.toLowerCase() === "k") {
+        e.preventDefault()
+        searchInputRef.current?.focus()
+        return
+      }
+      const target = e.target as HTMLElement
+      const isTyping =
+        target.tagName === "INPUT" || target.tagName === "TEXTAREA" || target.isContentEditable
+      if (e.key.toLowerCase() === "n" && !isTyping && !anyDialogOpen) {
+        e.preventDefault()
+        setEditEventId(null)
+        setDialogOpen(true)
+      }
+    }
+    window.addEventListener("keydown", handler)
+    return () => window.removeEventListener("keydown", handler)
+  }, [dialogOpen, aiDialogOpen, linkDialogOpen])
 
   useEffect(() => {
     if (selectedEventId) {
@@ -439,12 +602,12 @@ export default function Home() {
     }
   }
 
-  const handleAnalyze = async () => {
+  const handleAnalyze = async (force = false) => {
     setAiDialogOpen(true)
     setAiLoading(true)
     setAiError(null)
     try {
-      const result = await getAiAnalysis()
+      const result = await getAiAnalysis(force)
       setAiResult(result)
     } catch (err: any) {
       const msg = err?.response?.data?.message || "Erro ao gerar análise. Tente novamente em instantes."
@@ -579,7 +742,25 @@ export default function Home() {
               variant="ghost"
               size="icon"
               className="h-8 w-8"
-              onClick={handleAnalyze}
+              onClick={() => window.print()}
+              title="Exportar árvore (PDF)"
+            >
+              <Download className="h-4 w-4" />
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={`h-8 w-8 ${viewMode === "tree" ? "text-primary bg-primary/10" : ""}`}
+              onClick={() => setViewMode((v) => (v === "list" ? "tree" : "list"))}
+              title={viewMode === "list" ? "Ver como árvore visual" : "Ver como lista"}
+            >
+              {viewMode === "list" ? <Network className="h-4 w-4" /> : <List className="h-4 w-4" />}
+            </Button>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => handleAnalyze()}
               title="Análise por IA"
             >
               <Sparkles className="h-4 w-4" />
@@ -636,7 +817,7 @@ export default function Home() {
       {/* ─── Main Content ─── */}
       <main className="flex-1 flex">
         {/* ─── Timeline ─── */}
-        <div className="flex-1 overflow-y-auto px-5 py-8 lg:px-8 transition-all duration-300">
+        <div id="myggdrasil-print-area" className="flex-1 overflow-y-auto px-5 py-8 lg:px-8 transition-all duration-300">
           {loading ? (
             <div className="space-y-6">
               <div className="h-7 w-56 bg-muted rounded animate-pulse" />
@@ -718,18 +899,23 @@ export default function Home() {
               <div className="relative mb-8 max-w-sm">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
                 <Input
+                  ref={searchInputRef}
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Buscar decisão por nome..."
-                  className="h-9 pl-9 text-sm"
+                  className="h-9 pl-9 pr-9 text-sm"
                 />
-                {searchQuery && (
+                {searchQuery ? (
                   <button
                     onClick={() => setSearchQuery("")}
                     className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                   >
                     <X className="h-3.5 w-3.5" />
                   </button>
+                ) : (
+                  <kbd className="absolute right-2.5 top-1/2 -translate-y-1/2 font-mono text-[10px] text-muted-foreground/60 border border-border/50 rounded px-1 py-0.5 pointer-events-none">
+                    ⌘K
+                  </kbd>
                 )}
               </div>
 
@@ -739,8 +925,17 @@ export default function Home() {
                 </p>
               )}
 
-              {/* Year groups */}
-              {groupedEvents.map(([year, yearEvents]) => (
+              {viewMode === "tree" ? (
+                <TreeView
+                  events={filteredEvents}
+                  relationships={allRelationships}
+                  eventTypes={eventTypes}
+                  selectedEventId={selectedEventId}
+                  onSelect={handleSelectEvent}
+                />
+              ) : (
+              /* Year groups */
+              groupedEvents.map(([year, yearEvents]) => (
                 <div key={year} className="mb-10 last:mb-0">
                   <h3 className="font-mono text-[11px] uppercase tracking-[0.15em] text-muted-foreground mb-5">
                     {year === "Sem data" ? "Sem data" : year}
@@ -867,7 +1062,8 @@ export default function Home() {
                     })}
                   </div>
                 </div>
-              ))}
+              ))
+              )}
             </div>
           )}
         </div>
@@ -1149,10 +1345,24 @@ export default function Home() {
           ) : aiError ? (
             <div className="flex flex-col items-center justify-center py-8 text-center gap-3">
               <p className="text-sm text-destructive">{aiError}</p>
-              <Button variant="outline" size="sm" onClick={handleAnalyze}>Tentar novamente</Button>
+              <Button variant="outline" size="sm" onClick={() => handleAnalyze()}>Tentar novamente</Button>
             </div>
           ) : aiResult ? (
             <div className="space-y-5 mt-1">
+              {aiResult.cached && (
+                <div className="flex items-center justify-between gap-2 -mt-1 mb-1 px-3 py-2 rounded-md border border-border/40 bg-muted/30">
+                  <p className="text-[11px] text-muted-foreground font-mono">
+                    Resultado salvo em cache
+                    {aiResult.geradoEm && ` · gerado em ${new Date(aiResult.geradoEm).toLocaleString("pt-BR", { day: "2-digit", month: "2-digit", hour: "2-digit", minute: "2-digit" })}`}
+                  </p>
+                  <button
+                    onClick={() => handleAnalyze(true)}
+                    className="text-[11px] font-mono text-primary hover:underline whitespace-nowrap"
+                  >
+                    Gerar novamente
+                  </button>
+                </div>
+              )}
               {aiResult.resumo && (
                 <p className="text-sm text-foreground/85 leading-relaxed">{aiResult.resumo}</p>
               )}

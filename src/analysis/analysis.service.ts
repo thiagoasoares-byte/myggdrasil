@@ -1,7 +1,9 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
+import { createHash } from 'crypto';
 import { AppDataSource } from '../database/data-source';
 import { EventEntity } from '../database/entities/event.entity';
 import { EventRelationshipEntity } from '../database/entities/eventrelationship.entity';
+import { AnalysisCacheEntity } from '../database/entities/analysis_cache.entity';
 import { GroqClient } from './groq.client';
 
 export type DecisionAnalysis = {
@@ -10,6 +12,8 @@ export type DecisionAnalysis = {
   decisoes_boas_consequencias: { nome: string; motivo: string }[];
   recomendacoes: string[];
   categorias_atencao: { categoria: string; motivo: string }[];
+  cached?: boolean;
+  geradoEm?: string;
 };
 
 @Injectable()
@@ -18,7 +22,10 @@ export class AnalysisService {
 
   constructor(private readonly groq: GroqClient) {}
 
-  async analyzeForUser(userId: number): Promise<DecisionAnalysis> {
+  async analyzeForUser(
+    userId: number,
+    force = false,
+  ): Promise<DecisionAnalysis> {
     const events = await AppDataSource.getRepository(EventEntity)
       .createQueryBuilder('event')
       .leftJoinAndSelect('event.event_type', 'type')
@@ -42,17 +49,74 @@ export class AnalysisService {
       .where('parentUser.id = :userId', { userId })
       .getMany();
 
+    const hash = this.computeHash(events, relationships);
+    const cacheRepo = AppDataSource.getRepository(AnalysisCacheEntity);
+
+    if (!force) {
+      const cached = await cacheRepo.findOne({
+        where: { user_id: { id: userId } as any },
+      });
+      if (cached && cached.decisions_hash === hash) {
+        const parsed = JSON.parse(cached.result) as DecisionAnalysis;
+        return {
+          ...parsed,
+          cached: true,
+          geradoEm: cached.updcreat?.updated_at?.toISOString(),
+        };
+      }
+    }
+
     const prompt = this.buildPrompt(events, relationships);
 
     try {
       const result = await this.groq.generateJSON(prompt);
-      return this.normalize(result);
+      const normalized = this.normalize(result);
+      const saved = await this.saveCache(userId, hash, normalized, cacheRepo);
+      return {
+        ...normalized,
+        cached: false,
+        geradoEm: saved?.updcreat?.updated_at?.toISOString(),
+      };
     } catch (error: any) {
       this.logger.warn(
         `Fallback local de análise acionado para user ${userId}: ${error?.message || 'erro desconhecido'}`,
       );
-      return this.buildLocalFallback(events, relationships);
+      return {
+        ...this.buildLocalFallback(events, relationships),
+        cached: false,
+      };
     }
+  }
+
+  private computeHash(
+    events: EventEntity[],
+    relationships: EventRelationshipEntity[],
+  ): string {
+    const eventParts = events
+      .map((e) => `e${e.id}:${e.updcreat?.updated_at?.getTime?.() ?? ''}`)
+      .sort();
+    const relParts = relationships.map((r) => `r${r.id}`).sort();
+    return createHash('sha256')
+      .update([...eventParts, ...relParts].join('|'))
+      .digest('hex');
+  }
+
+  private async saveCache(
+    userId: number,
+    hash: string,
+    result: DecisionAnalysis,
+    repo: ReturnType<typeof AppDataSource.getRepository<AnalysisCacheEntity>>,
+  ) {
+    let entry = await repo.findOne({
+      where: { user_id: { id: userId } as any },
+    });
+    if (!entry) {
+      entry = new AnalysisCacheEntity();
+      entry.user_id = { id: userId } as any;
+    }
+    entry.result = JSON.stringify(result);
+    entry.decisions_hash = hash;
+    return repo.save(entry);
   }
 
   private buildPrompt(

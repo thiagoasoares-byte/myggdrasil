@@ -134,10 +134,12 @@ export type DecisionAnalysis = {
   decisoes_boas_consequencias: { nome: string; motivo: string }[];
   recomendacoes: string[];
   categorias_atencao: { categoria: string; motivo: string }[];
+  cached?: boolean;
+  geradoEm?: string;
 };
 
-export async function getAiAnalysis(): Promise<DecisionAnalysis> {
-  const { data } = await api.get<DecisionAnalysis>("/analysis");
+export async function getAiAnalysis(force = false): Promise<DecisionAnalysis> {
+  const { data } = await api.get<DecisionAnalysis>("/analysis", { params: force ? { force: "true" } : {} });
   return data;
 }
 

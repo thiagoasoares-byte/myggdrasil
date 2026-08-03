@@ -6,7 +6,6 @@
 
 [![Node.js](https://img.shields.io/badge/Node.js-18.x-%2343853D)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-9.x-%23E0234E)](https://nestjs.com/)
-[![Kafka](https://img.shields.io/badge/Kafka-Event--driven-%23231F20)](https://kafka.apache.org/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-%233178C6)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.x-%2361DAFB)](https://react.dev/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-%23007AB9)](https://www.mysql.com/)
@@ -49,13 +48,17 @@ The product is already functional end to end:
 - Decision CRUD with structured categorization
 - Parent/child relationships between decisions, with protection against self-links and duplicate links
 - Ownership-aware access control
-- Kafka-driven welcome/confirmation email flow through a consumer that reacts to signup events
+- AI-generated insights on your decision history (Groq, free tier)
 - React frontend for signup, login, profile management, and decision graph navigation
+
+> **Note:** Kafka and the transactional email flow (signup confirmation) were part of an
+> earlier version of this project and were removed for the free-tier deployment.
+> See [`docs/kafka-email-removal.md`](docs/kafka-email-removal.md) for the full reasoning.
 
 ## Tech Stack
 
-- **Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL, Kafka
-- **Mail:** Nodemailer with Mailgun, plus SMTP/Ethereal/MailHog fallbacks for development
+- **Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL
+- **AI:** Groq API (free tier) for decision-history analysis, with a local rule-based fallback
 - **Frontend:** React, Vite, wouter, Framer Motion, utility-first styling, shadcn/ui-based components
 
 ## System Model
@@ -79,7 +82,7 @@ src/
     entities/
   event/
   event-relationship/
-  kafka/
+  analysis/
   utils/
   app.module.ts
   main.ts

@@ -5,28 +5,20 @@ import { AppModule } from './app.module';
 import { ValidationPipe } from '@nestjs/common'
 const cookieParser = require('cookie-parser')
 import { AppDataSource } from "./database/data-source";
-import { Transport } from "@nestjs/microservices";
-import { Partitioners } from 'kafkajs';
 
 async function bootstrap() { 
   const app = await NestFactory.create(AppModule);
 
-  app.connectMicroservice({
-    transport: Transport.KAFKA,
-    options: {
-      client: {
-        brokers: [process.env.KAFKA_BROKER],
-        createPartitioner: Partitioners.LegacyPartitioner,
-      },
-      consumer: {
-        groupId: 'myggdrasil-consumer',
-      },
-    },
+  // CORS: precisa liberar explicitamente o domínio do frontend (Vercel),
+  // já que agora frontend e backend ficam em domínios diferentes.
+  app.enableCors({
+    origin: process.env.FRONTEND_URL,
+    credentials: true,
   })
 
+  // Kafka foi removido do fluxo de produção (ver docs/kafka-email-removal.md).
   app.useGlobalPipes(new ValidationPipe({ transform: true }))
   app.use(cookieParser())
-  await app.startAllMicroservices()
   await app.listen(process.env.PORT ?? 3000);
   try {
     await AppDataSource.initialize()

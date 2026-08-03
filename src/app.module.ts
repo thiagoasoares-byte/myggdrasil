@@ -8,13 +8,22 @@ import { APP_GUARD } from '@nestjs/core';
 import { AuthGuard } from './auth/auth.guard';
 import { EventModule } from './event/event.module';
 import { AnalysisModule } from './analysis/analysis.module';
-import { KafkaController } from './kafka/kafka.controller';
-import { MailService } from './kafka/mail.service';
 import { UserEntity } from './database/entities/user.entity';
 import { EventEntity } from './database/entities/event.entity';
 import { EventType } from './database/entities/eventtype.entity';
 import { EmailTokenEntity } from './database/entities/email_token.entity';
 import { EventRelationshipEntity } from './database/entities/eventrelationship.entity';
+import { AnalysisCacheEntity } from './database/entities/analysis_cache.entity';
+import * as fs from 'fs';
+
+const sslEnabled = process.env.MYSQL_SSL === 'true';
+const sslCaPath = process.env.MYSQL_SSL_CA;
+const ssl = sslEnabled
+  ? {
+      rejectUnauthorized: !!sslCaPath,
+      ca: sslCaPath ? fs.readFileSync(sslCaPath).toString() : undefined,
+    }
+  : undefined;
 
 @Module({
   imports: [
@@ -25,17 +34,18 @@ import { EventRelationshipEntity } from './database/entities/eventrelationship.e
       username: process.env.MYSQLUSER,
       password: process.env.MYSQLPASSWORD,
       database: process.env.BDNAME,
-      entities: [UserEntity, EventEntity, EventType, EmailTokenEntity, EventRelationshipEntity],
+      entities: [UserEntity, EventEntity, EventType, EmailTokenEntity, EventRelationshipEntity, AnalysisCacheEntity],
       synchronize: false,
       autoLoadEntities: true,
+      ssl,
     }),
     UsersModule,
     AuthModule,
     EventModule,
     AnalysisModule,
   ],
-  controllers: [AppController, KafkaController],
-  providers: [AppService, MailService, {
+  controllers: [AppController],
+  providers: [AppService, {
     provide: APP_GUARD,
     useClass: AuthGuard
   }],
