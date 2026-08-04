@@ -4,22 +4,21 @@
 
 # Myggdrasil
 
-[![Node.js](https://img.shields.io/badge/Node.js-18.x-%2343853D)](https://nodejs.org/)
+[![Node.js](https://img.shields.io/badge/Node.js-20.x-%2343853D)](https://nodejs.org/)
 [![NestJS](https://img.shields.io/badge/NestJS-9.x-%23E0234E)](https://nestjs.com/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-5.x-%233178C6)](https://www.typescriptlang.org/)
 [![React](https://img.shields.io/badge/React-18.x-%2361DAFB)](https://react.dev/)
 [![MySQL](https://img.shields.io/badge/MySQL-8.x-%23007AB9)](https://www.mysql.com/)
+[![Groq](https://img.shields.io/badge/AI-Groq-%23F55036)](https://groq.com/)
 [![License](https://img.shields.io/badge/License-MIT-%23000000)](LICENSE)
 
-**Myggdrasil is a full-stack decision journal that turns choices into a navigable tree of context, consequences, and reflection.**
+**Myggdrasil is a full-stack decision journal that turns choices into a navigable tree of context, consequences, and reflection — with an AI layer that reads your own history back to you.**
 
-It pairs a NestJS backend with a React + Vite frontend, cookie-based authentication, and a product direction designed to feel calm, editorial, and recruiter-ready.
+Live at **[myggdrasil.vercel.app](https://myggdrasil.vercel.app)** · Backend on Render · MySQL on Aiven.
 
 ## Product Snapshot
 
-Myggdrasil helps people record meaningful decisions, connect them as parent/child relationships, and revisit the path that led them forward.
-
-It is not a task manager, calendar, or social feed. It is a personal decision map built for reflection, clarity, and long-term context.
+Myggdrasil helps people record meaningful decisions, connect them as parent → child relationships, and revisit the path that led them forward. It is not a task manager, calendar, or social feed — it's a personal decision map built for reflection, clarity, and long-term context.
 
 ## Why It Matters
 
@@ -28,46 +27,59 @@ Most tools tell you what happened. Myggdrasil is built to help answer:
 - What led to this decision?
 - What did it lead to next?
 - Which themes repeat across my path?
-- Which choices were useful, and which deserve a second look?
+- Which choices were useful, and which categories deserve more attention?
 
-The result is a more structured way to learn from life decisions over time.
-
-## Current Status
-
-The product is already functional end to end:
-
-- Frontend and backend are connected and working together.
-- Users can sign up, log in, manage their profile, and sign out.
-- Decisions can be created, updated, deleted, and linked as parent/child relationships.
-- The UI already follows a modern dark editorial direction with protected routes, motion, toasts, and a side-panel detail workflow.
+The AI analyzer takes a first pass at those questions directly — reading the decision graph and returning a personal, second-person analysis instead of a generic summary.
 
 ## What It Does
 
-- Secure user signup and login with HttpOnly cookie sessions
-- JWT authentication with **RS256**
-- Decision CRUD with structured categorization
+**Core**
+- Secure signup and login with HttpOnly cookie sessions, JWT signed with RS256
+- Decision CRUD with categorization — including **custom, user-owned decision types** created inline (not just the built-in defaults)
 - Parent/child relationships between decisions, with protection against self-links and duplicate links
-- Ownership-aware access control
-- AI-generated insights on your decision history (Groq, free tier)
-- React frontend for signup, login, profile management, and decision graph navigation
+- Ownership-aware access control on every resource
 
-> **Note:** Kafka and the transactional email flow (signup confirmation) were part of an
-> earlier version of this project and were removed for the free-tier deployment.
-> See [`docs/kafka-email-removal.md`](docs/kafka-email-removal.md) for the full reasoning.
+**Exploring the tree**
+- Debounced real-time search by decision name
+- Drag-and-drop: drop one decision card onto another to link them instantly, no dialog needed
+- Two ways to view the tree: chronological list, or an auto-laid-out **visual graph** with parent → child edges
+- Hub dashboard with decision counts, relationship counts, and top categories at a glance
+- Keyboard shortcuts (`Cmd/Ctrl+K` to search, `N` for a new decision)
+- Export the current tree to PDF straight from the browser's print pipeline
+
+**AI analyzer**
+- Groq-backed analysis (free tier, no billing friction) that identifies your most impactful decisions, which ones produced the best downstream consequences, concrete next steps, and which categories need more attention
+- Written in second person, like a mentor who already knows your history — not a generic report
+- Results are cached per user against a hash of the decision graph, so re-opening the analyzer doesn't burn API quota unless something actually changed
+- Falls back to a local, rule-based analysis if the AI call fails, so the feature never fully breaks
+
+**Account**
+- Profile management (name, email, birth date)
+- Password change with a live strength checklist, and a show/hide toggle on every password field
+- Account deletion with password confirmation
+
+> **Note on Kafka/email:** an earlier version of this project used Kafka for an async
+> welcome-email flow. It was removed for the free-tier deployment — see
+> [`docs/kafka-email-removal.md`](docs/kafka-email-removal.md) for the full reasoning.
+> Password recovery for logged-out users is intentionally out of scope until an
+> email channel is reintroduced; changing your password while logged in is fully
+> supported today.
 
 ## Tech Stack
 
 - **Backend:** Node.js, NestJS, TypeScript, TypeORM, MySQL
-- **AI:** Groq API (free tier) for decision-history analysis, with a local rule-based fallback
-- **Frontend:** React, Vite, wouter, Framer Motion, utility-first styling, shadcn/ui-based components
+- **AI:** Groq API (free tier) for decision-history analysis, with a local rule-based fallback and per-user result caching
+- **Frontend:** React, Vite, wouter, Framer Motion, Tailwind, shadcn/ui-based components
+- **Infra:** Docker (backend build), Render (backend hosting), Vercel (frontend hosting), Aiven (managed MySQL, free tier)
 
 ## System Model
 
 ```text
 user               — account credentials and profile
 event              — recorded decisions / actions
-event_type         — decision categories
+event_type         — decision categories (built-in defaults + per-user custom types)
 event_relationship — parent-child links between decisions
+analysis_cache      — cached AI analysis per user, invalidated by a hash of the decision graph
 ```
 
 This model supports a flexible decision tree, where each choice can branch into multiple outcomes and multiple predecessors.
@@ -89,6 +101,9 @@ src/
 frontend/
   client/
     src/
+docs/
+  kafka-email-removal.md
+migrations/
 ```
 
 ## Setup
@@ -102,8 +117,18 @@ MYSQLUSER=your_user
 MYSQLPASSWORD=your_password
 BDNAME=project
 PORT=11111
+
 JWT_PRIVATE_KEY=./private.key
 JWT_PUBLIC_KEY=./public.key
+
+# Set MYSQL_SSL=true when connecting to a managed DB (e.g. Aiven) that requires TLS
+MYSQL_SSL=false
+
+# Free at console.groq.com/keys
+GROQ_API_KEY=your_groq_key
+
+FRONTEND_URL=http://localhost:5173
+NODE_ENV=development
 ```
 
 Generate RSA keys:
@@ -113,6 +138,8 @@ openssl genrsa -out private.key 2048
 openssl rsa -in private.key -pubout -out public.key
 ```
 
+Run the SQL files in `migrations/` against your database before starting the app for the first time.
+
 ## Run Locally
 
 **Backend**
@@ -120,7 +147,6 @@ openssl rsa -in private.key -pubout -out public.key
 ```bash
 npm install
 npm run start:dev
-npm run build
 ```
 
 **Frontend**
@@ -133,11 +159,23 @@ npm run dev
 
 Open http://localhost:5173. In development, the frontend proxies `/api` to the backend at `http://localhost:3000`.
 
+## Deployment
+
+- **Frontend (Vercel):** Root Directory `frontend`, Output Directory `dist/public`, env var `VITE_API_URL` pointing at the backend.
+- **Backend (Render):** Docker web service built from the root `Dockerfile`; `/healthz` as the health check path; env vars mirror the `.env` above with `NODE_ENV=production` and `MYSQL_SSL=true`.
+- **Database (Aiven):** free-tier managed MySQL; TLS required, no CA pinning needed for the current setup.
+
+CORS is locked to a single `FRONTEND_URL` origin, and the auth cookie is set with `sameSite: "none"` and `secure: true` in production so it survives the cross-domain hop between Vercel and Render.
+
 ## API Summary
 
 | Method | Route | Purpose | Auth |
 |---|---|---|---|
 | POST | `/user/signup` | Register a new user | Public |
+| GET | `/user/profile` | Get the current user | Protected |
+| PUT | `/user/profile/update` | Update name/email/birth date | Protected |
+| PUT | `/user/profile/password` | Change password | Protected |
+| DELETE | `/user/profile/delete` | Delete account | Protected |
 | POST | `/auth/login` | Request a JWT and set the auth cookie | Public |
 | GET | `/auth/me` | Get the current user from the cookie session | Protected |
 | POST | `/auth/logout` | Clear the auth cookie | Public |
@@ -145,36 +183,32 @@ Open http://localhost:5173. In development, the frontend proxies `/api` to the b
 | POST | `/events` | Create a new decision | Protected |
 | PUT | `/events/:id` | Update a decision | Protected |
 | DELETE | `/events/:id` | Delete a decision | Protected |
+| GET | `/event-types` | List default + user-owned decision types | Protected |
+| POST | `/event-types` | Create a custom decision type | Protected |
+| PUT / DELETE | `/event-types/:id` | Update/delete a custom decision type (own types only) | Protected |
 | POST | `/event-relationships` | Link two decisions as parent and child | Protected |
-| GET | `/events/:id/relationships` | List relationships for a decision | Protected |
+| GET | `/event-relationships` | List all relationships for the current user | Protected |
+| GET | `/events/:id/relationships` | List relationships for a single decision | Protected |
 | DELETE | `/event-relationships/:id` | Remove a relationship | Protected |
-
-## Frontend Experience
-
-The `frontend/` app is a React + Vite experience that consumes the backend API directly and is already wired for the main product flow:
-
-- Signup and login with cookie-based sessions (`withCredentials: true`)
-- Auth bootstrap via `GET /auth/me` on app load
-- Decision list, detail, create, edit, delete, and relationship management
-- Modern dark editorial UI with motion, toasts, protected routes, and responsive panels
-- Development proxy support plus an environment-driven API URL for production
+| GET | `/analysis` | Run (or fetch cached) AI analysis of the decision graph | Protected |
+| GET | `/healthz` | Health check | Public |
 
 ## Authentication Model
 
 - Login sets an HttpOnly cookie named `mg_token` containing the JWT.
-- The frontend includes cookies on API requests through the shared HTTP client.
+- The frontend includes cookies on every API request (`withCredentials: true`).
 - `GET /auth/me` restores the session from the cookie.
 - `POST /auth/logout` clears the session.
-
-For production, keep `NODE_ENV=production` so the cookie is marked `secure`, and consider adding CSRF protection.
+- In production, `NODE_ENV=production` marks the cookie `secure` and `sameSite: "none"`, required for the frontend and backend living on different domains.
 
 ## Security Highlights
 
 - Passwords hashed with **bcrypt**
 - JWT signed with **RS256**
-- Protected routes guarded by authentication middleware
-- Input validation via **class-validator**
+- Protected routes guarded globally by an authentication middleware, with an explicit `@SkipAuth()` opt-out for public routes
+- Input validation via **class-validator**, including enforced password strength on signup and password change
 - Relationship creation blocks self-referencing decisions and duplicate direct links
+- CORS restricted to a single known frontend origin
 
 ## Roadmap
 
@@ -184,21 +218,13 @@ For production, keep `NODE_ENV=production` so the cookie is marked `secure`, and
 - [x] Parent/child decision linking
 - [x] React frontend connected to the API
 - [x] Modern UI refresh aligned with the product brief
-- [ ] Search with debounce to filter decisions by name in real time
-- [ ] Drag-and-drop linking between cards without opening a dialog
-- [ ] Hub statistics with counters, most-used categories, and AI insights
-- [ ] AI analyzer to surface the most beneficial decisions and categories that need more attention
-- [ ] Deployment
-
-## Planned Product Updates
-
-The next product steps are focused on making the decision tree faster to explore and more useful as a reflection tool:
-
-1. Search with debounce to keep filtering smooth while users type.
-2. Drag-and-drop relationship creation to reduce friction when branching from one decision to another.
-3. A small hub dashboard with counts, category trends, and an AI layer that analyzes outcomes, useful decisions, and areas that deserve more attention.
-
-The AI analyzer should eventually highlight which decisions were most beneficial, which ones produced better outcomes, which choices should probably have been different, and which categories need more focus.
+- [x] Debounced search
+- [x] Drag-and-drop relationship creation
+- [x] Hub statistics dashboard
+- [x] AI analyzer (Groq) with caching and local fallback
+- [x] Custom, user-owned decision types
+- [x] Visual tree view, PDF export, keyboard shortcuts
+- [x] Deployment (Vercel + Render + Aiven)
 
 ## Relationship Notes
 

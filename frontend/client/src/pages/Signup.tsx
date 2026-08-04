@@ -6,6 +6,8 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
+import { PasswordChecklist, isPasswordStrong } from "@/components/ui/password-checklist"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link, useLocation } from "wouter"
@@ -38,6 +40,10 @@ export default function Signup() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (!isPasswordStrong(password)) {
+      toast.error("Sua senha ainda não atende todos os requisitos")
+      return
+    }
     setLoading(true)
     try {
       await signup(name, email, password, birthDt || undefined)
@@ -114,16 +120,16 @@ export default function Signup() {
               <Label htmlFor="password" className="font-mono text-[11px] uppercase tracking-wider">
                 Senha
               </Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                placeholder="Mínimo 8 caracteres, maiúscula, número e símbolo"
+                placeholder="Crie uma senha forte"
                 required
                 autoComplete="new-password"
                 className="h-10"
               />
+              <PasswordChecklist value={password} />
             </div>
 
             <div className="space-y-1.5">
@@ -155,20 +161,20 @@ export default function Signup() {
       </div>
 
       {/* Right side - branding */}
-      <div className="hidden lg:flex lg:w-[55%] bg-muted/20 items-center justify-center relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[55%] hub-gradient-bg items-center justify-center relative overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}
-          className="text-center px-12"
+          className="text-center px-12 relative z-10"
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/8 flex items-center justify-center">
-            <LogoIcon className="text-primary" />
+          <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-primary/8 flex items-center justify-center">
+            <LogoIcon className="text-primary w-16 h-16" />
           </div>
-          <h2 className="font-serif text-2xl font-bold text-foreground mb-2.5">
+          <h2 className="font-serif text-6xl font-bold text-foreground mb-5">
             Myggdrasil
           </h2>
-          <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-xl max-w-lg mx-auto leading-relaxed">
             Sua árvore de decisões. Cada escolha registrada, cada consequência visível.
           </p>
         </motion.div>
