@@ -8,6 +8,7 @@ type AuthContextType = {
   signup: (name: string, email: string, password: string, birth_dt?: string) => Promise<void>
   logout: () => Promise<void>
   updateProfile: (data: Partial<Pick<User, "name" | "email" | "birth_dt">>) => Promise<void>
+  changePassword: (currentPassword: string, newPassword: string) => Promise<void>
   deleteAccount: (password: string) => Promise<void>
 }
 
@@ -52,13 +53,17 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await checkSession()
   }
 
+  const changePassword = async (currentPassword: string, newPassword: string) => {
+    await api.put("/user/profile/password", { currentPassword, newPassword })
+  }
+
   const deleteAccount = async (password: string) => {
     await api.delete("/user/profile/delete", { data: { password } })
     setUser(null)
   }
 
   return (
-    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateProfile, deleteAccount }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout, updateProfile, changePassword, deleteAccount }}>
       {children}
     </AuthContext.Provider>
   )

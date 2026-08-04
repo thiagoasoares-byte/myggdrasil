@@ -6,6 +6,7 @@
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { PasswordInput } from "@/components/ui/password-input"
 import { Label } from "@/components/ui/label"
 import { useAuth } from "@/contexts/AuthContext"
 import { Link, useLocation } from "wouter"
@@ -94,9 +95,8 @@ export default function Login() {
               <Label htmlFor="password" className="font-mono text-[11px] uppercase tracking-wider">
                 Senha
               </Label>
-              <Input
+              <PasswordInput
                 id="password"
-                type="password"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
@@ -121,20 +121,20 @@ export default function Login() {
       </div>
 
       {/* Right side - branding */}
-      <div className="hidden lg:flex lg:w-[55%] bg-muted/20 items-center justify-center relative overflow-hidden">
+      <div className="hidden lg:flex lg:w-[55%] hub-gradient-bg items-center justify-center relative overflow-hidden">
         <motion.div
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
           transition={{ duration: 0.5, delay: 0.15, ease: [0.23, 1, 0.32, 1] }}
-          className="text-center px-12"
+          className="text-center px-12 relative z-10"
         >
-          <div className="w-20 h-20 mx-auto mb-6 rounded-full bg-primary/8 flex items-center justify-center">
-            <LogoIcon className="text-primary" />
+          <div className="w-32 h-32 mx-auto mb-8 rounded-full bg-primary/8 flex items-center justify-center">
+            <LogoIcon className="text-primary w-16 h-16" />
           </div>
-          <h2 className="font-serif text-2xl font-bold text-foreground mb-2.5">
+          <h2 className="font-serif text-6xl font-bold text-foreground mb-5">
             Myggdrasil
           </h2>
-          <p className="text-muted-foreground text-sm max-w-xs mx-auto leading-relaxed">
+          <p className="text-muted-foreground text-xl max-w-lg mx-auto leading-relaxed">
             Toda trajetória começa com uma decisão.
             <br />
             Registre um momento que ajudou a formar o caminho até aqui.

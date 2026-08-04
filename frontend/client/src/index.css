@@ -306,15 +306,36 @@
   #myggdrasil-print-area {
     position: absolute;
     inset: 0;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
     background: white !important;
-    color: black !important;
+    padding: 24px !important;
+  }
+  /* O bug: classes tipo text-foreground/text-muted-foreground têm cor própria
+     (branca no tema escuro) que não é sobrescrita por herança — precisa forçar
+     em CADA elemento, não só no container. */
+  #myggdrasil-print-area * {
+    color: #111827 !important;
+    text-shadow: none !important;
+    box-shadow: none !important;
+  }
+  #myggdrasil-print-area .event-card,
+  #myggdrasil-print-area .event-card * {
+    break-inside: avoid;
   }
   #myggdrasil-print-area .event-card {
-    break-inside: avoid;
-    border-color: #ccc !important;
+    border: 1px solid #ccc !important;
     background: white !important;
   }
-  #myggdrasil-print-area button {
+  /* Mantém as bolinhas coloridas de categoria/status visíveis */
+  #myggdrasil-print-area [class*="bg-"] {
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+  #myggdrasil-print-area button,
+  #myggdrasil-print-area input,
+  #myggdrasil-print-area kbd {
     display: none !important;
   }
 }

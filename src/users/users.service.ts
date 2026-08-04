@@ -5,6 +5,7 @@ import { AppDataSource } from '../database/data-source';
 import { hashMaker } from '../utils/hash';
 import { UserPutDTO } from './dto/put-user.dto';
 import { UserDeleteDTO } from './dto/delete-user.dto';
+import { ChangePasswordDTO } from './dto/change-password.dto';
 import * as bcrypt from 'bcrypt';
 import { EmailTokenEntity } from '../database/entities/email_token.entity';
 
@@ -73,6 +74,21 @@ export class UsersService {
     await tokenRepository.save(tokenRecord);
 
     return { message: 'E-mail verificado com sucesso.' };
+  }
+
+  async changePassword(dto: ChangePasswordDTO, userId: number): Promise<{ message: any }> {
+    const userRepository = AppDataSource.getRepository(UserEntity)
+    const user = await userRepository.findOne({ where: { id: userId } })
+    if (!user) {
+      throw new NotFoundException('Usuário não encontrado')
+    }
+    const matches = await bcrypt.compare(dto.currentPassword, user.password)
+    if (!matches) {
+      throw new UnauthorizedException('Senha atual incorreta')
+    }
+    user.password = await hashMaker(dto.newPassword)
+    await userRepository.save(user)
+    return { message: 'Senha atualizada com sucesso' }
   }
 
   async deleteUser(senhaUser: UserDeleteDTO,userId: number): Promise<{message:any}>{

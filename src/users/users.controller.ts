@@ -4,6 +4,7 @@ import { UserCreateDTO } from './dto/create-user.dto';
 import { SkipAuth } from '../decorators/publickey';
 import { UserPutDTO } from './dto/put-user.dto';
 import { UserDeleteDTO } from './dto/delete-user.dto';
+import { ChangePasswordDTO } from './dto/change-password.dto';
 
 @Controller('user')
 export class UsersController {
@@ -26,6 +27,13 @@ export class UsersController {
   async putuser(@Body() dto: UserPutDTO, @Req() req:any){
     const userId = req.user.sub
     return this.UsersService.putUser(dto, userId)
+  }
+
+  @Put('/profile/password')
+  @HttpCode(200)
+  async changePassword(@Body() dto: ChangePasswordDTO, @Req() req: any) {
+    const userId = req.user.sub
+    return this.UsersService.changePassword(dto, userId)
   }
 
   @Delete('/profile/delete')
