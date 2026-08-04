@@ -225,7 +225,3 @@ CORS is locked to a single `FRONTEND_URL` origin, and the auth cookie is set wit
 - [x] Custom, user-owned decision types
 - [x] Visual tree view, PDF export, keyboard shortcuts
 - [x] Deployment (Vercel + Render + Aiven)
-
-## Relationship Notes
-
-The `event-relationship` module currently blocks two specific cases: an event linking to itself, and an exact duplicate parent-child pair. It does not yet traverse the full graph to detect indirect cycles such as A → B → C → A. Full cycle detection remains on the roadmap.
