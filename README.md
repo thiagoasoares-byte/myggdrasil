@@ -14,7 +14,7 @@
 
 **Myggdrasil is a full-stack decision journal that turns choices into a navigable tree of context, consequences, and reflection — with an AI layer that reads your own history back to you.**
 
-Live at **[myggdrasil.vercel.app](https://myggdrasil.vercel.app)** · Backend on Render · MySQL on Aiven.
+Live at **[myggdrasilmuseumofdecisions.vercel.app](https://myggdrasilmuseumofdecisions.vercel.app)** · Backend on Render · MySQL on Aiven.
 
 ## Product Snapshot
 
